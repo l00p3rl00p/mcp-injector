@@ -2,11 +2,11 @@
 
 **A standalone tool to safely add/remove MCP servers config from config files.**
 
-No more broken JSON. No more bracket hell.
+No more broken JSON. No more bracket hell. This tool ensures your MCP configurations are always valid, backed up, and correctly formatted for all supported IDEs.
 
 ---
 
-## 📦 Installation
+## ⚡ Quick Start
 
 Get the GIT REPOSITORY and MCP PACKAGER from the [repo-mcp-packager](https://github.com/l00p3rl00p/repo-mcp-packager/) repository and drop it in the root of your project. That's it—no additional setup required.
 
@@ -14,21 +14,61 @@ Get the GIT REPOSITORY and MCP PACKAGER from the [repo-mcp-packager](https://git
 ```bash
 python mcp_injector.py --bootstrap
 ```
-This will check for and optionally fetch the other Git-Packager workspace components (`mcp-server-manager`, `repo-mcp-packager`) to enable enhanced functionality.
+This will check for and optionally fetch the other workspace components (`mcp-server-manager`, `repo-mcp-packager`).
 
-## 🚀 Quick Start
-
-### 1. Copy the tool anywhere
+### 2. Add an MCP Server
+The easiest way to add a server is using interactive prompts:
 ```bash
-# Copy to your PATH
-cp mcp_injector.py ~/bin/mcp-inject
-chmod +x ~/bin/mcp-inject
-
-# Or use it directly
-python mcp_injector.py --help
+python mcp_injector.py --client claude --add
 ```
 
-### 2. Add a server (Interactive Mode)
+---
+
+## 📋 Table of Contents
+
+1. [Overview](#-overview)
+2. [Features](#-features)
+3. [Installation](#-installation)
+4. [Usage Examples](#-usage-examples)
+5. [Advanced Usage](#-advanced-usage)
+6. [Safety Features](#-safety-features)
+7. [Troubleshooting](#-troubleshooting)
+8. [Git-Packager Workspace](#-git-packager-workspace)
+9. [Contributing](#-contributing)
+10. [License](#-license)
+
+---
+
+## 🔍 Overview
+
+The MCP JSON Injector is a zero-dependency Python tool designed to manage MCP server configurations in IDE JSON files. It handles the "bracket hell" of manual JSON editing, ensuring that commas and brackets are correctly placed every time.
+
+Whether you're adding a new server, removing an old one, or listing what's currently configured, the injector provides a safe and idempotent way to manage your environment.
+
+---
+
+## 🌟 Features
+
+* **Interactive Mode**: Simple prompts to guide you through adding/removing servers.
+* **JSON Validation**: Prevents saving if the resulting JSON would be invalid.
+* **Automatic Backups**: Always creates a `.backup` file before any modification.
+* **Standalone**: Single file with zero dependencies, works on Python 3.6+.
+* **Idempotent**: Safe to run multiple times with the same input.
+* **IDE Support**: Pre-configured paths for Claude, Xcode, Codex, Cursor, and more.
+
+---
+
+## 🛠 Installation
+
+### As a Standalone Tool
+Copy `mcp_injector.py` to your local `bin` directory for easy access:
+```bash
+cp mcp_injector.py ~/bin/mcp-inject
+chmod +x ~/bin/mcp-inject
+```
+
+### via Git-Packager Workspace
+The injector is part of a larger suite. You can bootstrap the entire workspace:
 ```bash
 # The easiest way - interactive prompts
 python mcp_injector.py --client claude --add
@@ -43,9 +83,10 @@ python mcp_injector.py --client claude --add
 
 ---
 
-## 📖 Usage Examples
+## 💻 Usage Examples
 
 ### List All Known Clients
+See which IDEs the tool has detected on your system:
 ```bash
 python mcp_injector.py --list-clients
 ```
@@ -115,11 +156,13 @@ python mcp_injector.py --client claude --list
 *(🔧 indicates Shesha-managed)*
 
 ### Remove a Server
+Safely remove a server by its name:
 ```bash
 python mcp_injector.py --client claude --remove agent-browser
 ```
 
-### Use a Custom Config Path
+### Custom Config Path
+Use the injector with any JSON file:
 ```bash
 python mcp_injector.py --config ~/custom/path/config.json --add
 ```
@@ -165,6 +208,14 @@ injector.add_server(
 
 ---
 
+## 🛡️ Safety Features
+
+The tool is built with a "safety-first" mindset:
+1. **Backups**: Every `--add` or `--remove` triggers a backup.
+2. **Pre-flight Check**: Validates existing JSON before attempting edits.
+3. **Atomic Writes**: Uses temporary files and moves to ensure no partial writes.
+4. **Validation**: Won't save if the JSON is invalid.
+
 ## 📦 Share This Tool
 
 **This file is standalone.** You can:
@@ -172,23 +223,21 @@ injector.add_server(
 - Share it in a new repo
 - Include it in your installer scripts
 - Use it as a library (`from mcp_injector import MCPInjector`)
-
-**Zero dependencies.** Just Python 3.6+.
-
 ---
 
-## 🆘 Troubleshooting
+## 🐛 Troubleshooting
 
 ### "Config file doesn't exist"
-The tool will create it for you automatically.
+The tool will create a valid minimal config file for you automatically if none exists.
 
 ### "Invalid JSON"
-Your config is broken. Check the backup:
+If your config is already broken, the tool will warn you. You can check the backup:
 ```bash
 cat ~/path/to/config.json.backup
 ```
 
 ### "Permission denied"
+Ensure the config file is writable by your user:
 ```bash
 chmod +w ~/path/to/config.json
 ```
@@ -245,3 +294,27 @@ This will:
 3. Set up the complete workspace for enhanced functionality
 
 **You're always in control**: The bootstrap process asks for permission before fetching anything.
+
+### Integrated Benefits
+When used as part of the workspace, the injector can:
+- Automatically validate servers before adding them to IDE configs.
+- Bootstrap missing components with one command.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for details. 
+**Note**: This tool is part of a 3-repo suite; ensure changes do not break integration.
+
+---
+
+## 📝 License
+
+This project is open-source and provided "as-is". See the repository for license details.
+
+---
+
+## 👤 Author
+
+Developed by the Git-Packager team.
