@@ -3,6 +3,9 @@
 .AppleDouble
 .LSOverride
 
+# Dependencies
+node_modules/
+
 # Thumbnails
 ._*
 
@@ -43,6 +46,11 @@ env/
 *.swp
 *.swo
 *~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # Backups (created by mcp_injector)
 *.backup

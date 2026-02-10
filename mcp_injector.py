@@ -13,6 +13,7 @@ Usage:
 
 import json
 import sys
+import os
 import argparse
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -21,6 +22,33 @@ import importlib.util
 __version__ = "0.1.0"
 
 # Known MCP client config locations
+GLOBAL_CONFIG_KEY = "ide_config_paths"
+
+def get_global_config_path():
+    if sys.platform == "win32":
+        return Path(os.environ['USERPROFILE']) / ".mcp-tools" / "config.json"
+    return Path.home() / ".mcp-tools" / "config.json"
+
+def update_global_config(ide_name: str, path: str):
+    """Sync IDE config path to global Nexus config"""
+    config_path = get_global_config_path()
+    try:
+        if config_path.exists():
+            data = json.loads(config_path.read_text())
+        else:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            data = {}
+        
+        if GLOBAL_CONFIG_KEY not in data:
+            data[GLOBAL_CONFIG_KEY] = {}
+        
+        data[GLOBAL_CONFIG_KEY][ide_name] = str(Path(path).expanduser().resolve())
+        
+        with open(config_path, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"⚠️  Failed to sync global config: {e}")
+
 KNOWN_CLIENTS = {
     "xcode": "~/Library/Developer/Xcode/UserData/MCPServers/config.json",
     "codex": "~/Library/Application Support/Codex/mcp_servers.json",
@@ -55,6 +83,10 @@ class MCPInjector:
         except json.JSONDecodeError as e:
             print(f"❌ Invalid JSON in {self.config_path}")
             print(f"   Error: {e}")
+            # SECURITY: Do not automatically overwrite corrupt config without user consent
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Failed to load config: {e}")
             sys.exit(1)
     
     def save_config(self, config: Dict[str, Any]):
@@ -108,7 +140,18 @@ class MCPInjector:
                 except Exception:
                     pass
             sys.exit(1)
+            sys.exit(1)
     
+        # Sync to global config if we can identify the IDE
+        try:
+            abs_path = str(self.config_path.resolve())
+            for name, path in KNOWN_CLIENTS.items():
+                if Path(path).expanduser().resolve() == self.config_path.resolve():
+                    update_global_config(name, abs_path)
+                    break 
+        except Exception:
+            pass
+
     def add_server(self, name: str, command: str, args: list, env: Optional[Dict[str, str]] = None):
         """Add or update an MCP server entry"""
         config = self.load_config()
