@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import importlib.util
 
+__version__ = "0.1.0"
+
 # Known MCP client config locations
 KNOWN_CLIENTS = {
     "xcode": "~/Library/Developer/Xcode/UserData/MCPServers/config.json",
@@ -56,12 +58,29 @@ class MCPInjector:
             sys.exit(1)
     
     def save_config(self, config: Dict[str, Any]):
-        """Save config with backup"""
-        # Create backup if file exists
+        """
+        Save config with backup and atomic write.
+        
+        This method implements defensive file I/O:
+        1. Creates backup (with error handling)
+        2. Validates JSON serialization
+        3. Writes to temp file first (atomic)
+        4. Renames temp to target (atomic operation)
+        
+        Failure modes:
+        - Backup failure: Warns but continues (backup is best-effort)
+        - Serialization failure: Exits (config is invalid)
+        - Write failure: Exits (disk full, permissions, etc.)
+        """
+        # Create backup if file exists (best-effort)
         if self.config_path.exists():
-            with open(self.backup_path, 'w') as f:
-                f.write(self.config_path.read_text())
-            print(f"📦 Backup created: {self.backup_path}")
+            try:
+                with open(self.backup_path, 'w') as f:
+                    f.write(self.config_path.read_text())
+                print(f"📦 Backup created: {self.backup_path}")
+            except Exception as e:
+                print(f"⚠️  Warning: Backup creation failed: {e}")
+                print(f"   Continuing with config update...")
         
         # Validate JSON before writing
         try:
@@ -70,11 +89,25 @@ class MCPInjector:
             print(f"❌ Failed to serialize JSON: {e}")
             sys.exit(1)
         
-        # Write to file
-        with open(self.config_path, 'w') as f:
-            f.write(json_str)
-        
-        print(f"✅ Config updated: {self.config_path}")
+        # Atomic write: write to temp file, then rename
+        temp_path = self.config_path.with_suffix('.json.tmp')
+        try:
+            with open(temp_path, 'w') as f:
+                f.write(json_str)
+            
+            # Atomic rename (POSIX guarantees atomicity)
+            temp_path.replace(self.config_path)
+            print(f"✅ Config updated: {self.config_path}")
+        except Exception as e:
+            print(f"❌ Failed to write config: {e}")
+            print(f"   Possible causes: disk full, permissions, or I/O error")
+            # Clean up temp file if it exists
+            if temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except Exception:
+                    pass
+            sys.exit(1)
     
     def add_server(self, name: str, command: str, args: list, env: Optional[Dict[str, str]] = None):
         """Add or update an MCP server entry"""
