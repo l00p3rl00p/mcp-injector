@@ -10,6 +10,12 @@ No more broken JSON. No more bracket hell.
 
 Get the GIT REPOSITORY and MCP PACKAGER from the [repo-mcp-packager](https://github.com/l00p3rl00p/repo-mcp-packager/) repository and drop it in the root of your project. That's it—no additional setup required.
 
+**Or use the Universal Bootstrapper:**
+```bash
+python mcp_injector.py --bootstrap
+```
+This will check for and optionally fetch the other Git-Packager workspace components (`mcp-server-manager`, `repo-mcp-packager`) to enable enhanced functionality.
+
 ## 🚀 Quick Start
 
 ### 1. Copy the tool anywhere
@@ -206,3 +212,36 @@ chmod +w ~/path/to/config.json
 python mcp_injector.py --client claude --add
 ```
 ✅ Perfect JSON every time.
+
+---
+
+## 🤝 Better Together: Git-Packager Workspace
+
+This tool is part of the **Git-Packager** workspace, which includes:
+
+| Tool | Purpose |
+|------|--------|
+| **mcp-injector** (this tool) | Safely manage MCP server configs in IDE JSON files |
+| **mcp-server-manager** | Discover and track MCP servers across your system |
+| **repo-mcp-packager** | Install and package MCP servers with automation |
+
+### Standalone vs. Integrated
+
+- **Standalone**: This tool works perfectly on its own with zero dependencies.
+- **Integrated**: When used with the other components, you get:
+  - Automatic server validation before adding to IDE configs
+  - One-click workspace setup with `python mcp_injector.py --bootstrap`
+  - Cross-tool awareness (e.g., check if a server is running before configuring)
+
+### Bootstrap the Workspace
+
+```bash
+python mcp_injector.py --bootstrap
+```
+
+This will:
+1. Check which Git-Packager components are present
+2. Offer to fetch missing components from GitHub
+3. Set up the complete workspace for enhanced functionality
+
+**You're always in control**: The bootstrap process asks for permission before fetching anything.

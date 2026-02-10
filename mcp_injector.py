@@ -16,6 +16,7 @@ import sys
 import argparse
 from pathlib import Path
 from typing import Dict, Any, Optional
+import importlib.util
 
 # Known MCP client config locations
 KNOWN_CLIENTS = {
@@ -251,8 +252,29 @@ Examples:
     parser.add_argument("--remove", metavar="NAME", help="Remove a server by name")
     parser.add_argument("--list", action="store_true", help="List all configured servers")
     parser.add_argument("--list-clients", action="store_true", help="Show all known client locations")
+    parser.add_argument("--bootstrap", action="store_true", help="Bootstrap the Git-Packager workspace (fetch missing components)")
     
     args = parser.parse_args()
+    
+    # Handle --bootstrap
+    if args.bootstrap:
+        try:
+            # Import and run the universal bootstrapper
+            bootstrap_path = Path(__file__).parent / "bootstrap.py"
+            if not bootstrap_path.exists():
+                print("❌ bootstrap.py not found. Please download it from:")
+                print("   https://github.com/l00p3rl00p/repo-mcp-packager/blob/main/bootstrap.py")
+                sys.exit(1)
+            
+            # Load and execute bootstrap module
+            spec = importlib.util.spec_from_file_location("bootstrap", bootstrap_path)
+            bootstrap = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(bootstrap)
+            bootstrap.main()
+            return
+        except Exception as e:
+            print(f"❌ Bootstrap failed: {e}")
+            sys.exit(1)
     
     # Handle --list-clients
     if args.list_clients:
