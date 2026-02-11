@@ -22,6 +22,14 @@ import importlib.util
 
 __version__ = "0.1.0"
 
+# Best-practice guardrails: these Nexus binaries are CLIs, not MCP servers over stdio.
+# Injecting them into MCP clients (Claude/Codex/etc.) will cause JSON parse errors.
+KNOWN_NONSERVER_BINARIES = {
+    "mcp-activator",
+    "mcp-observer",
+    "mcp-surgeon",
+}
+
 # Known MCP client config locations
 GLOBAL_CONFIG_KEY = "ide_config_paths"
 
@@ -213,10 +221,10 @@ def detect_package_components() -> Dict[str, Dict[str, Any]]:
     if not bin_dir.exists():
         return components
 
+    # Important: Only include binaries that speak MCP over stdio (JSON-RPC on stdout).
+    # Many Nexus CLIs (e.g. `mcp-activator`, `mcp-observer`, `mcp-surgeon`) are *not*
+    # MCP servers and will cause clients like Claude to throw JSON parse errors if injected.
     candidates = {
-        "nexus-activator": ("mcp-activator", []),
-        "nexus-observer": ("mcp-observer", []),
-        "nexus-surgeon": ("mcp-surgeon", []),
         "nexus-librarian": ("mcp-librarian", ["--server"]),
     }
 
@@ -395,8 +403,15 @@ class MCPInjector:
         except Exception:
             pass
 
-    def add_server(self, name: str, command: str, args: list, env: Optional[Dict[str, str]] = None):
+    def add_server(self, name: str, command: str, args: list, env: Optional[Dict[str, str]] = None, *, allow_unsafe_cli: bool = False):
         """Add or update an MCP server entry"""
+        cmd_base = Path(command).name if "/" in command else command
+        if cmd_base in KNOWN_NONSERVER_BINARIES and not allow_unsafe_cli:
+            raise ValueError(
+                f"Refusing to inject '{cmd_base}' as an MCP server. "
+                "This appears to be a CLI, not an MCP stdio server. "
+                "If you really intend this, pass allow_unsafe_cli=True at the callsite."
+            )
         config = self.load_config()
         
         # Check if server already exists
@@ -501,6 +516,20 @@ def interactive_add(injector: MCPInjector):
         args = preset_args
         print(f"\n📦 Using preset: {name}")
         print(f"   Command: {command} {' '.join(args)}")
+
+    # Guardrail warning: avoid injecting known CLIs as MCP servers.
+    cmd_base = Path(command).name if "/" in command else command
+    if cmd_base in KNOWN_NONSERVER_BINARIES:
+        print("\n⚠️  Warning: This command looks like a Nexus CLI, not an MCP stdio server.")
+        print("   Injecting it into an MCP client can cause JSON parse errors and disconnects.")
+        print("   If you meant to run a web MCP proxy, use an HTTP/SSE/WS proxy and connect web clients to it.")
+        warn_confirm = input("Proceed anyway? [y/N]: ").strip().lower()
+        if warn_confirm != "y":
+            print("❌ Cancelled")
+            sys.exit(0)
+        allow_unsafe_cli = True
+    else:
+        allow_unsafe_cli = False
     
     # Env vars (optional)
     env = None
@@ -528,7 +557,7 @@ def interactive_add(injector: MCPInjector):
         sys.exit(0)
     
     # Execute
-    injector.add_server(name, command, args, env)
+    injector.add_server(name, command, args, env, allow_unsafe_cli=allow_unsafe_cli)
 
 
 def list_known_clients():

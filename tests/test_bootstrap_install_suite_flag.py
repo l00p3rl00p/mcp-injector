@@ -1,4 +1,5 @@
 import os
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,6 +19,7 @@ class TestBootstrapInstallSuiteFlag(unittest.TestCase):
             spec = importlib.util.spec_from_file_location("inj_bootstrap_test", BOOTSTRAP)
             mod = importlib.util.module_from_spec(spec)
             assert spec and spec.loader
+            sys.path.insert(0, str(REPO_ROOT))
             spec.loader.exec_module(mod)
 
             clone_targets = []
