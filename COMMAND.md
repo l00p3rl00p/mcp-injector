@@ -37,6 +37,18 @@ This repo’s `bootstrap.py` is a **safe forwarder** (no disk scanning). It will
 python3 bootstrap.py --permanent
 ```
 
+Non-interactive suite install (clones missing repos into `~/.mcp-tools`, no disk scanning):
+
+```bash
+python3 bootstrap.py --install-suite --permanent
+```
+
+Diagnostics:
+
+```bash
+python3 bootstrap.py --install-suite --permanent --devlog
+```
+
 ---
 
 ## Uninstall (Central-Only, Safe by Default)
@@ -50,9 +62,14 @@ Full wipe:
 python3 uninstall.py --purge-data --kill-venv
 ```
 
+Dry run:
+
+```bash
+python3 uninstall.py --purge-data --kill-venv --dry-run
+```
+
 Diagnostics:
 
 ```bash
 python3 uninstall.py --purge-data --kill-venv --verbose --devlog
 ```
-
