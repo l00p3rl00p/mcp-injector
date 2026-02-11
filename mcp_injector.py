@@ -24,6 +24,32 @@ __version__ = "0.1.0"
 # Known MCP client config locations
 GLOBAL_CONFIG_KEY = "ide_config_paths"
 
+# Nexus Support: Try to load high-confidence libraries from the central venv
+def inject_nexus_env():
+    try:
+        home = Path.home() if sys.platform != "win32" else Path(os.environ['USERPROFILE'])
+        nexus_venv = home / ".mcp-tools" / ".venv"
+        if nexus_venv.exists():
+            # Add site-packages to sys.path
+            import platform
+            if platform.system() == "Windows":
+                site_pkgs = nexus_venv / "Lib" / "site-packages"
+            else:
+                # Find python version dir
+                lib_dir = nexus_venv / "lib"
+                py_dirs = list(lib_dir.glob("python3*"))
+                if py_dirs:
+                    site_pkgs = py_dirs[0] / "site-packages"
+                else:
+                    return
+            
+            if site_pkgs.exists() and str(site_pkgs) not in sys.path:
+                sys.path.insert(0, str(site_pkgs))
+    except Exception:
+        pass
+
+inject_nexus_env()
+
 def get_global_config_path():
     if sys.platform == "win32":
         return Path(os.environ['USERPROFILE']) / ".mcp-tools" / "config.json"
@@ -89,21 +115,76 @@ class MCPInjector:
             print(f"❌ Failed to load config: {e}")
             sys.exit(1)
     
+    def _structural_audit(self, old: Dict, new: Dict, path: str = ""):
+        """
+        Deep compare structures to detect unintended type changes (Schema Drift).
+        Standard Tier (96% Confidence) protection.
+        """
+        for key, new_val in new.items():
+            if key in old:
+                old_val = old[key]
+                if type(old_val) != type(new_val) and old_val is not None and new_val is not None:
+                    print(f"❌ Structural Integrity Violation at '{path}{key}':")
+                    print(f"   Expected {type(old_val).__name__}, got {type(new_val).__name__}")
+                    raise TypeError(f"Schema drift detected at {key}")
+                
+                if isinstance(new_val, dict) and isinstance(old_val, dict):
+                    self._structural_audit(old_val, new_val, f"{path}{key}.")
+
+    def _validate_with_schema(self, config: Dict):
+        """
+        Validate against official JSON Schema if jsonschema is available.
+        Industrial Tier protection.
+        """
+        try:
+            from jsonschema import validate
+            # Basic MCP server config schema
+            schema = {
+                "type": "object",
+                "properties": {
+                    "mcpServers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                                "command": {"type": "string"},
+                                "args": {"type": "array", "items": {"type": "string"}},
+                                "env": {"type": "object", "additionalProperties": {"type": "string"}}
+                            },
+                            "required": ["command"]
+                        }
+                    }
+                }
+            }
+            validate(instance=config, schema=schema)
+            # print("✅ Schema validation passed")
+        except ImportError:
+            pass # jsonschema not installed, skip
+        except Exception as e:
+            print(f"❌ JSON Schema Validation Failed: {e}")
+            raise
+
     def save_config(self, config: Dict[str, Any]):
         """
-        Save config with backup and atomic write.
-        
-        This method implements defensive file I/O:
-        1. Creates backup (with error handling)
-        2. Validates JSON serialization
-        3. Writes to temp file first (atomic)
-        4. Renames temp to target (atomic operation)
-        
-        Failure modes:
-        - Backup failure: Warns but continues (backup is best-effort)
-        - Serialization failure: Exits (config is invalid)
-        - Write failure: Exits (disk full, permissions, etc.)
+        Save config with structural auditing, backup, and atomic write.
         """
+        # 0. Validation (Tiered)
+        if self.config_path.exists():
+            try:
+                old_data = self.config_path.read_text()
+                if old_data.strip():
+                    old_config = json.loads(old_data)
+                    self._structural_audit(old_config, config)
+            except Exception as e:
+                print(f"⚠️  Structural audit failed: {e}")
+                if not input("   Continue anyway? [y/N]: ").strip().lower() == 'y':
+                    sys.exit(1)
+        
+        try:
+            self._validate_with_schema(config)
+        except Exception:
+            sys.exit(1)
+
         # Create backup if file exists (best-effort)
         if self.config_path.exists():
             try:
