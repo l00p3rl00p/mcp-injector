@@ -1,39 +1,38 @@
-# User Outcomes - MCP JSON Injector
+# User Outcomes - Git Repo MCP Converter & Installer
 
-This document outlines the goals and expected outcomes for users of the MCP JSON Injector.
+This document defines what success looks like for the "Clean Room Installer" and ensures the technical path aligns with the mission of friction-less replication.
 
 ---
 
 ## ⚡ Quick Summary
-* **Primary Goal**: Manage MCP server configurations safely without manual JSON editing.
-* **Secondary Goal**: Ensure interoperability across different IDEs and the Git-Packager workspace.
+* **Mission Statement**: To provide a "Just Works" installation experience that creates zero-leak, isolated environments allowing agents to replicate the packager stack without friction.
 
 ---
 
 ## 📋 Table of Contents
-1. [Core Outcomes](#-core-outcomes)
-2. [Scenarios](#-scenarios)
-3. [Success Metrics](#-success-metrics)
+1. [Successful Outcomes](#-successful-outcomes)
+2. [High-Fidelity Signals](#-high-fidelity-signals)
+3. [Design Guardrails](#-design-guardrails)
 
 ---
 
-## 🔍 Core Outcomes
+## 🔍 Successful Outcomes
 
 As a user, I want:
 
-### 1. Safety and Reliability
-* **No Broken Configs**: I want to add or remove servers without worrying about missing commas or mismatched brackets.
-* **Automatic Backups**: I want the tool to save my current configuration before making any changes.
-* **Validation**: I want the tool to verify that the final JSON is valid before saving it.
+### 1. Portability & Isolation
+* **Standalone Execution**: The `/serverinstaller` directory can be copied to any repo and execute correctly without external dependencies.
+* **Environment Integrity**: The installer bootstraps from the host's existing tools and create isolated environments (e.g., `.venv`) to prevent leaks.
+* **Zero-Touch Replication**: A real agent can execute `install.py --headless` and achieve a functional stack without human intervention.
 
-### 2. Convenience
-* **Interactive Prompts**: I want to be guided through the process of adding a server, including choosing from common presets.
-* **Client Auto-Detection**: I want the tool to know where my IDE config files are located without me having to look them up.
-* **Idempotent Operations**: I want to be able to run the same command multiple times and have it result in a consistent state.
+### 2. Intelligent Discovery & Autonomy
+* **Autonomous Bootstrap**: The Activator can fetch the entire Workforce Nexus suite from GitHub, allowing it to move from "standalone script" to "suite architect" without local source siblings.
+* **Inventory Awareness**: The installer identifies all available components (Python, Node, Docker) and allows selective installation to prevent "package bloat."
+* **Local Source Parity**: In developer mode, the tool installs the application *exactly as it exists* in the local root, respecting custom modifications.
 
-### 3. Integrated Experience
-* **Workspace Awareness**: I want the injector to work seamlessly with `mcp-server-manager` and `repo-mcp-packager`.
-* **One-Click Setup**: I want to be able to bootstrap my entire workspace from a single command.
+### 3. Trust & Transparency
+* **Surgical Integrity**: The `uninstall` command surgically reverses only the changes it made, ensuring the host is returned to its pre-installation state.
+* **Before/After Verification**: Clear reports allow the operator (human or agent) to verify every change. No stealth modifications to PATH or Registry.
 
 ### 4. Universal Observability
 * **Visual Status**: The user can see the health and connection status of all Nexus components (Observer, Librarian, Injector, Activator) in a single dashboard.
@@ -41,7 +40,8 @@ As a user, I want:
 
 ### 5. Resilient Lifecycle
 * **Atomic Rollback**: If an installation fails at any step, the system automatically reverts to a clean state, leaving no partial artifacts.
-* **Safe Upgrades**: The installer respects existing configurations and only applies necessary updates, preventing "config drift" or data loss.
+* **Safe Upgrades**: The `mcp-activator --sync` command provides a unified update loop, ensuring all central tools stay synchronized with the latest security and feature patches.
+* **Context-Locked Execution**: Entry points carry their own venv and PYTHONPATH, ensuring they work regardless of the user's active terminal environment.
 
 ---
 
@@ -49,26 +49,22 @@ As a user, I want:
 
 To fully align with these outcomes, the following enhancements are planned:
 
-*   **Observability**: The GUI must eventually show *live* metrics (CPU/Memory) for the industrial tier, not just static "Presence".
-*   **Usability**: The "Librarian CRUD" tools need a UI frontend. Currently, they are "Headless Tools" only.
-*   **Resilience**: While `start_gui.sh` exists, the Python entry point (`python -m mcp_inventory.cli`) is more cross-platform compatible and should be the primary recommendation in all docs.
+*   **GUI Reliability (Target 95%+)**: Transition GUI from a blocking process to a background service with PID management.
+*   **Librarian Synergy**: Implement a dynamic watcher so the Librarian indexes changes in real-time, not just on installation.
+*   **Operational Awareness**: Add "version health" checks to the GUI dashboard to visually signal when a `--sync` is required.
 
 ---
 
-## 💻 Scenarios
+## 🚥 High-Fidelity Signals
 
-### Scenario 1: First-time MCP User
-* **Action**: User wants to add their first MCP server to Claude Desktop.
-* **Outcome**: User runs `python mcp_injector.py --client claude --add`, selects a preset, and the server is instantly available in Claude after a restart.
-
-### Scenario 2: Cleaning up Old Servers
-* **Action**: User has several experimental servers they no longer use.
-* **Outcome**: User lists servers with `--list` and removes them by name with `--remove`, keeping their config clean and valid.
+* **Success**: `.librarian/manifest.json` correctly lists all artifacts, and `verify.py` reports `[VERIFIED]` for all items.
+* **Failure**: Encountering an interactive prompt in `--headless` mode.
+* **Success**: Running `uninstall.py` removes the `# Shesha Block` from `.zshrc` without deleting other aliases.
 
 ---
 
-## 📈 Success Metrics
+## 🛡 Design Guardrails
 
-* **Zero Syntax Errors**: Users should never experience a "broken JSON" error in their IDE after using this tool.
-* **Time Saved**: Reducing the time spent looking for config paths and manually editing JSON.
-* **Replication Ease**: Agents can reliably configure new environments without human intervention.
+* **No Sudo**: Reject any feature that requires global `sudo` permissions if a local `.venv` alternative exists.
+* **No Unmanaged Overwrites**: Reject any "auto-update" feature that replaces local configuration without a manifest-backed snapshot.
+* **Respect Local Code**: Treatment of the current repository state as the "source of truth." Never overwrite local changes with upstream templates.

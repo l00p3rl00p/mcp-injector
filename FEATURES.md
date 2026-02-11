@@ -1,44 +1,43 @@
-# Features & Capabilities: The Surgeon (mcp-injector)
+# Features & Capabilities: The Activator (repo-mcp-packager)
 
-**Precision Configuration Injection for the Workforce Nexus.**
+**Universal Deployment & Environment Isolation for the Workforce Nexus.**
 
-The Surgeon is the configuration bridge between high-level AI tools and low-level IDE settings. This document provides a high-density reference for all operational modes, safety protocols, and Nexus integration logic.
+The Activator is the primary engine for transforming repositories into production-ready AI tools while maintaining a "Clean Room" policy. This document provides a high-density reference for installation strategies, isolation logic, and the Phase 9 hardening suite.
 
 ---
 
-## 📊 Capability Matrix
+## 📊 Installation Strategy Matrix
 
-| Feature | Description | Lite Mode | Permanent Mode |
-| :--- | :--- | :---: | :---: |
-| **JSON Injection** | Add/Remove servers without bracket hell | Basic | Full Validation |
-| **Structural Audit** | Detects schema drift in IDE configs | N/A | Supported |
-| **Backups** | Atomic `.backup` creation before writes | ✅ | ✅ |
-| **Client Detection** | Auto-locates Claude, Cursor, Xcode, etc. | ✅ | ✅ |
-| **Auto-Chmod** | Sets execute bits on injected scripts | ✅ | ✅ |
+| Strategy | Mode | Reliability | Environment | Use Case |
+| :--- | :--- | :---: | :--- | :--- |
+| **Full Install** | Interactive | **High** | Managed `.venv` | Complex Python/Node projects |
+| **Lightweight** | `--lite` | **Basic** | Shell Shim (`.sh`) | Single-file scripts / Portability |
+| **Permanent** | `--permanent`| **Industrial** | Nexus Infra | Mission-critical deployments |
+| **Headless** | `--headless` | **Automated**| Non-interactive | CI/CD / AI Agent replication |
 
 ---
 
 ## 📋 Table of Contents
-1. [Safety Architecture](#safety-architecture)
+1. [Clean Room Architecture](#clean-room-architecture)
 2. [Command Matrix](#command-matrix)
-3. [Reliability Tiers](#reliability-tiers)
-4. [Nexus Integration](#nexus-integration)
+3. [Intelligent Resolution & Hardening](#intelligent-resolution--hardening)
+4. [Surgical Reversal (Uninstall)](#surgical-reversal-uninstall)
 
 ---
 
-## 🔍 Safety Architecture
+## 🔍 Clean Room Architecture
 
-The Surgeon follows a strict **Verify -> Backup -> Change -> Validate** loop.
+The Activator ensures that no tool pollutes the global host system by strictly gating environment variables and binaries.
 
 ```mermaid
-flowchart TD
-    Config[IDE Config File] --> Check[Structural Audit]
-    Check -- No Drift --> Backup[Atomic .backup]
-    Backup --> Inject[JSON Patch]
-    Inject --> Verify[Syntax Validation]
-    Verify -- Success --> Save[Commit to Disk]
-    Verify -- Fail --> Restore[Restore from .backup]
-    Save --> Chmod[Standardize Permissions]
+graph TD
+    Repo[Git Repo] --> Detect[Structural Audit]
+    Detect --> Choice{Strategy Select}
+    Choice -- Managed --> Venv[Isolated .venv]
+    Choice -- Wrapper --> Shim[install.sh Wrapper]
+    Venv --> Map[Path Marker Injection]
+    Shim --> Map
+    Map --> Manifest[.librarian/manifest.json]
 ```
 
 ---
@@ -47,38 +46,43 @@ flowchart TD
 
 | Operation | Command | Primary Flag | Context |
 | :--- | :--- | :--- | :--- |
-| **Add (Wizard)** | `python mcp_injector.py --add` | `--client claude` | Guided server setup |
-| **Add (Direct)**| `python mcp_injector.py --add` | `--name X --command Y` | Scripted/Installer mode |
-| **Remove** | `python mcp_injector.py --remove`| `--name server-name` | Safe subtraction |
-| **List Config** | `python mcp_injector.py --list` | `--client cursor` | Inspect IDE state |
-| **List Clients** | `python mcp_injector.py --list-clients` | N/A | Discovery mode |
-| **Audit** | `python mcp_injector.py --check` | N/A | Schema integrity check |
+| **Install** | `python install.py` | (None) | Standard interactive deployment |
+| **Update** | `python install.py` | `--update` | Pull code + re-harden permissions |
+| **Bridge** | `python install.py` | `--generate-bridge` | Wrap legacy code for AI use |
+| **Library** | `python install.py` | `--with-library` | Deploy Librarian alongside repo |
+| **Rollback** | (Automatic) | (None) | Triggered on installation failure |
 
 ---
 
-## 📊 Reliability Tiers
+## 🔐 Intelligent Resolution & Hardening (Phase 9)
 
-Performance and validation scale with your **Nexus Reliability Tier**.
+The Activator features a multi-layer safety suite to ensure executables "Just Work" on the first try:
 
-*   **Basic**: Standard JSON manipulation with atomic backup. 
-*   **High**: **Structural Auditing** enabled. Matches the IDE's internal mirror to detect manual config drift.
-*   **Industrial**: **Full JSON Schema Validation** via `jsonschema`. Guarantees maximum compliance with IDE expectations.
+1.  **Entry Point Resolution**: If a folder contains both `.py` and `.sh` entry points, the Activator prompts the user (or recommends the portable `.sh` option).
+2.  **Auto-Chmod Enforcement**: Automatically sets the execute bit (`chmod +x`) on:
+    *   Internal Nexus tools (`mcp.py`, `bootstrap.py`, etc.).
+    *   Discovered user scripts in target repositories.
+    *   Generated `install.sh` wrappers.
+3.  **Permissions Audit**: During updates, the Activator re-verifies that all mapped executables are still granted appropriate permissions.
 
 ---
 
-## 🔐 Universal Safety & Hardening
-*   **Bracket Hell Prevention**: Automated comma and list management ensures zero syntax errors.
-*   **Permissions Hardening**: Automatically runs `chmod +x` on any shell or python scripts injected into a config.
-*   **Atomic Transactions**: Uses temporary file swaps to ensure configurations are never corrupted during power loss.
+## 🗑️ Surgical Reversal (Uninstall)
+
+The `uninstall.py` tool uses the **Nexus Manifest Layer** to ensure zero-residue cleanup:
+*   **Artifact Removal**: Only files listed in `manifest.json` are deleted.
+*   **PATH Cleaning**: Uses `# Shesha Block` markers to surgically extract shell configuration edits.
+*   **Nexus Protection**: Refuses to delete the `~/.mcp-tools` home unless it is completely empty or the `--force` flag is used.
 
 ---
 
 > **Author**: l00p3rl00p / Workforce Nexus
-> **Reference**: [NEXUS_TECHNICAL_SPEC.md](../repo-mcp-packager/NEXUS_TECHNICAL_SPEC.md)
+> **Reference**: [NEXUS_TECHNICAL_SPEC.md](./NEXUS_TECHNICAL_SPEC.md)
+
 
 
 ## 🏢 The Nexus Convergence Model
-The Surgeon supports three tiers of organizational binding:
+The Activator supports three tiers of organizational binding:
 
 | Feature | Lite (Loose Binding) | Standard (Close Binding) | Industrial (Managed App) |
 | :--- | :--- | :--- | :--- |
@@ -90,10 +94,9 @@ The Surgeon supports three tiers of organizational binding:
 
 ## 📚 Master Documentation
 For the complete suite experience and detailed procedures, see:
-👉 **[NEXUS_GUIDE.md](../repo-mcp-packager/NEXUS_GUIDE.md)**
+👉 **[NEXUS_GUIDE.md](./NEXUS_GUIDE.md)**
 
 ---
 
 > **Author**: l00p3rl00p / Workforce Nexus
 > **Reference**: [ARCHITECTURE.md](./ARCHITECTURE.md) | [ENVIRONMENT.md](./ENVIRONMENT.md)
-

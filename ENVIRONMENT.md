@@ -1,63 +1,94 @@
-# Environment Specification - The Surgeon (mcp-injector)
+# Environment Specification - Git Repo MCP Converter & Installer
 
-**Unified Environment Requirements & Client Mapping.**
+**Unified Environment Requirements & Audit Logic.**
 
-This document provides a low-density technical manual for the host environment requirements, dependency resolution logic, and IDE-specific configuration paths used by the `mcp-injector`.
+This document provides a low-density technical manual for the host environment requirements, dependency resolution logic, and OS-specific configurations used by the Workforce Nexus Activator.
 
 ---
-
-## 📂 Nexus Suite Impact
-When running as part of the **Workforce Nexus**, the Surgeon uses the shared central configuration:
-* **Nexus Home**: `~/.mcp-tools/`
-* **Central Registry**: `~/.mcp-tools/mcp-injector/config.json`
 
 ## 🔍 Core Dependency Rules
 
 ### 1. Python Runtimes
-*   **Standalone Mode**: Optimized for **Python 3.6+**. The Surgeon uses standard library modules only (`json`, `pathlib`, `os`, `shutil`) to ensure it can be dropped into any environment without a virtual environment.
-*   **Industrial Nexus Tier**: When integrated with the Workforce Nexus, it uses **Python 3.11+** and leverages `jsonschema` for high-confidence validation.
+*   **The Orchestrator (`install.py`)**: Requires **Python 3.9+**.
+*   **The Application Engine**: The core workforce tools are optimized for **Python 3.11+**.
+*   **Isolation Policy**: The installer will always prioritize the creation of a local `.venv` within the project root to prevent global package conflicts.
 
-### 2. File Access & Permissions
-*   **Write Access**: The Surgeon requires read/write access to the IDE configuration directories (listed below).
-*   **Backup Storage**: The Surgeon creates a `.json.backup` file in the same directory as the target config. Sufficient disk space for multiple config versions is required.
+### 2. Node.js & NPM
+*   **Requirement**: Node.js v18+ and NPM v9+ are required only if the `gui/` directory is present.
+*   **Isolation Policy**: Use `--npm-policy local` to ensure binaries are installed in a project-private context.
+
+### 3. Docker Ecosystem
+*   **Requirement**: A running Docker Desktop or Engine daemon is required for sandbox operations.
+*   **Validation**: The installer executes `docker info` to verify daemon status. If inaccessible, the `--docker-policy` determines whether to skip or fail.
 
 ---
 
-## 🛠 Client Configuration Matrix
+## 🛠 OS-Specific Path Matrix
 
-The Surgeon maintains a mapping of known MCP client configuration files. These paths are expanded automatically based on the host OS.
+The Workforce Nexus centralizes all artifacts in a predictable location based on the host OS.
 
-| Client | Platform | Path Pattern |
+| Platform | Nexus Home Root | Config Path |
 | :--- | :--- | :--- |
-| **Claude** | macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| **Cursor** | macOS | `~/.cursor/mcp.json` |
-| **VS Code** | macOS | `~/.vscode/mcp_settings.json` |
-| **Xcode** | macOS | `~/Library/Developer/Xcode/UserData/MCPServers/config.json` |
-| **AI Studio**| Linux/macOS| `~/.config/aistudio/mcp_servers.json` |
-
-### Platform-Specific Expansion
-*   **macOS**: Uses `Path.home()` and `Library/Application Support`.
-*   **Windows**: Uses `%APPDATA%` and `%USERPROFILE%` environment variables.
-*   **Linux**: Follows the XDG Base Directory Specification (e.g., `~/.config`).
+| **macOS** | `~/.mcp-tools` | `~/Library/Application Support/Cloud/claude_desktop_config.json` |
+| **Linux** | `~/.mcp-tools` | `~/.config/Claude/claude_desktop_config.json` |
+| **Windows** | `%USERPROFILE%\.mcp-tools` | `%APPDATA%\Claude\claude_desktop_config.json` |
 
 ---
 
-## 🛡 Security & Hardening
+## 🛠 Environment Audit Logic: The Pre-flight Probe
 
-### Atomic Operations
-To prevent data loss, the Surgeon performs all file writes in three distinct steps:
-1.  **Backup**: Copies `config.json` -> `config.json.backup`.
-2.  **Verify**: Writes the new structure to `config.json.tmp` and confirms it is valid JSON.
-3.  **Swap**: Atomically replaces the original file with the verified temporary file.
+The `audit.py` module performs a multi-stage probe to build a system capabilities map.
 
-### Industrial Hardening (Nexus Tier)
-In **Permanent (Industrial)** mode, the environment triggers:
-*   **Schema Validation**: Loads IDE-specific JSON schemas from the Nexus home to verify field types and required properties.
-*   **Permissions Lockdown**: Automatically applies `chmod +x` to any scripts or python binaries injected into the configuration.
+### Stage 1: Shell Detection
+The probe identifies the active shell via the `SHELL` environment variable.
+*   **Targets**: `.zshrc` (macOS default), `.bashrc`, `.bash_profile`.
+*   **Action**: Captures the path to the primary RC file for future PATH modifications.
+
+### Stage 2: Binary Path Discovery
+Uses `shutil.which` to find system binaries for:
+*   `python3`
+*   `npm`
+*   `node`
+*   `docker`
+*   `git`
+
+### Stage 3: Feature Inventory
+Scans the current project root for identifying markers:
+1.  **`pyproject.toml`**: Triggers full Python packaging logic.
+2.  **`requirements.txt`**: Triggers legacy pip dependency installation.
+3.  **`package.json`**: Triggers NPM installation.
+4.  **`Dockerfile`**: Enables containerization features.
+
+---
+
+## ⚙️ Configuration Policies
+
+### PATH Management (Surgical Injection)
+The installer adds the project's bin directory to the host PATH using unique markers to ensure zero-risk uninstallation.
+
+**Example Injection Block:**
+```bash
+# Shesha Block START
+export PATH="/Users/user/project/.venv/bin:$PATH"
+# Shesha Block END
+```
+*The uninstall script specifically targets everything between these markers.*
+
+### Permissions Hardening (Phase 9)
+The environment must support `chmod` (POSIX) or equivalent ACL modifications.
+*   **Logic**: During the installation phase, the `ensure_executable` method iterates through all entry points and shell scripts, setting the `0o111` (execute) bits.
+*   **Enforcement**: This applies to all internal Nexus tools and discovered user repository scripts.
+
+---
+
+## 🛡 Network & Proxy Requirements
+*   **Discovery**: Requires outbound access to `github.com` for bootstrapping sibling repos.
+*   **Installation**: Requires access to `pypi.org` and `registry.npmjs.org`.
+*   **Air-gap Mode**: If dependencies are pre-cached, the `--lite` mode can be used without active network connections.
 
 ---
 
 ## 📝 Metadata
-*   **Status**: Hardened (Phase 9)
+*   **Status**: Production / Hardened (Phase 9)
 *   **Developer**: l00p3rl00p
 *   **Reference**: [ARCHITECTURE.md](./ARCHITECTURE.md) | [USER_OUTCOMES.md](./USER_OUTCOMES.md)

@@ -1,79 +1,148 @@
-# MCP Workforce Nexus: The Surgeon (mcp-injector)
+# MCP Workforce Nexus: The Activator
 
-**Precision JSON configuration injection with industrial-grade safety and atomic reliability.**
+**The primary engine for deploying, hardening, and unifying MCP server environments with industrial-grade reliability.**
 
-The **Surgeon** is a specialized tool for safely modifying IDE configuration files (Claude Desktop, Cursor, VS Code, etc.) to inject or remove MCP server definitions without breaking syntax.
+The **Activator** orchestrates the Workforce Nexus, transforming raw GitHub repositories into production-ready AI tools. It handles environment isolation, structural auditing, and atomic deployments.
 
 ---
 
-## ⚡ Quick Start: Standalone Surgeon
+## ⚡ Quick Start: Standalone Activator
 
-Inject a server into your Claude Desktop config immediately:
+Install a single repository as a portable MCP server immediately:
 
 ```bash
-python3 mcp_injector.py add claude my-server "python3 path/to/server.py"
+python3 serverinstaller/install.py
 ```
-*Selection tip: Use `add` for injection and `remove` for surgical extraction.*
+*Selection tip: Follow the prompts to detect Python/Node and generate an `install.sh` shim.*
 
 ---
 
 ## 🚀 Package Start: The Workforce Nexus
 
-The Surgeon is a core member of the Workforce Nexus. When used as part of the suite, it automatically synchronizes IDE paths to the central Observer.
+Deploy the entire hardened Nexus suite to `~/.mcp-tools` in one command:
 
 ```bash
-# In the suite, standalone usage remains the same, but benefits from Nexus venv
-~/.mcp-tools/mcp-injector/mcp_injector_install.sh add cursor my-tool "node index.js"
+python3 bootstrap.py --gui
 ```
+*Selection tip: Use `--gui` to auto-launch the dashboard after installation.*
 
 ---
 
 ## 📋 Table of Contents
-1. [Surgical Flow](#surgical-flow)
-2. [Reliability Layer Matrix](#reliability-layer-matrix)
+1. [Nexus Architecture](#nexus-architecture)
+2. [Reliability Tier Comparison](#reliability-tier-comparison)
 3. [Core Capabilities](#core-capabilities)
-4. [Universal Safety & Backups](#universal-safety--backups)
+4. [Universal Safety & Rollback](#universal-safety--rollback)
 5. [Documentation (Low Density)](#documentation-low-density)
 
 ---
 
-## 🔍 Surgical Flow
+## 🔍 Nexus Architecture
 
-The Surgeon ensures that your configuration is never corrupted by following a strict validation loop.
+The Activator unifies all specialized tools into a single, hardened location.
 
 ```mermaid
-graph TD
-    Start[Add/Remove Request] --> Verify[Structural Audit]
-    Verify --> Backup[Create .json.backup]
-    Backup --> Write[Write .json.tmp]
-    Write --> Atomic[Atomic Swap]
-    Atomic --> Sync[Nexus Global Sync]
+graph LR
+    A["The Activator<br>(bootstrap.py)"] --> N["~/.mcp-tools/<br>(The Nexus)"]
+    N --> S["Surgeon<br>(mcp-injector)"]
+    N --> O["Observer<br>(mcp-server-manager)"]
+    N --> L["Librarian<br>(mcp-link-library)"]
 ```
 
 ---
 
-## 📊 Reliability Layer Matrix
+## 📊 Reliability Tier Comparison
 
-The Surgeon unifies safety protocols across all execution tiers.
+All tiers include **Universal Safety (Pre-flight & Rollback)**.
 
-| Tier | Protection | Confidence | Mechanism |
-| :--- | :--- | :---: | :--- |
-| **Basic** | Atomic Write | **Standard** | `.tmp` file validation before swap |
-| **High** | Structural Audit | **Advanced** | Type-drift detection (Schema Drift) |
-| **Industrial** | Schema Validation | **Industrial** | `jsonschema` enforcement |
+| Tier | Flag | Convergence Area | Strategy | Features |
+| :--- | :--- | :---: | :--- | :--- |
+| **Lite** | `--lite` | **Distributed** | Zero-Dep | Portable, Atomic Reversal, Auto-Chmod |
+| **Standard** | (Default) | **Linked** | Pure Python | Structural Audit, Regex Indexing, Symlinks |
+| **Industrial** | `--permanent` | **Unified** | Infrastructure | Managed Venv, `jsonschema`, `psutil`, `PyYAML` |
 
 ---
 
 ## 🌟 Core Capabilities
 
-*   **Surgical Injection**: Adds or updates `mcpServers` entries without touching existing configurations.
-*   **Structural Audit**: Prevents overwriting if the JSON schema has changed unexpectedly.
-*   **Suite Synergy**: Automatically registers managed IDE configs in `~/.mcp-tools` for Librarian discovery.
-*   **Nexus Global Sync**: Ensuring all IDE modifications are tracked centrally.
-*   **Interactive Mode**: Use `python3 mcp_injector.py interactive` for a guided experience.
-*   **Multilingual Support**: Handles Python, Node.js, and Shell scripts with automatic path resolution.
+*   **Atomic Transactions**: Multi-tool installation that reverts completely on failure.
+*   **Suite Synergy**: Detects sibling tools and triggers "Application Convergence" for a unified experience.
+*   **Intelligent Resolution**: Prompt/Recommend between multiple entry points (e.g., `.sh` vs `.py`).
+*   **Auto-Chmod Enforcement**: Automatically sets execute bits on all entry points and dependencies.
+*   **Pre-flight Intelligence**: Verifies disk health and permissions before execution.
+*   **Headless Mode**: Zero-touch replication for automated agents.
+
+---
+
+## 🔐 Universal Safety & Rollback
+
+Every operation follows a strict **Pre-flight -> Track -> Commit/Rollback** pattern.
+
+```mermaid
+flowchart LR
+    P[Pre-flight] --> T_Check[Track Bits]
+    T_Check --> Action[Install/Update]
+    Action -- Error --> R[Atomic Rollback]
+    Action -- Success --> C[Lock Manifest]
+```
+
+---
+
+## 📚 Documentation (Low Density Deep Dives)
+
+Detailed technical manuals for engineering reference:
+
+*   **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Logic models, subsystems, and state machines.
+*   **[ENVIRONMENT.md](./ENVIRONMENT.md)**: Audit logic, OS-specific paths, and dependency rules.
+*   **[FEATURES.md](./FEATURES.md)**: Command matrix, resolve logic, and scorable feature logs.
+*   **[NEXUS_TECHNICAL_SPEC.md](./NEXUS_TECHNICAL_SPEC.md)**: Master reliability specification.
 
 
+
+## 🛠️ Workforce Nexus Command Reference
+
+| Tool | Shared Command | Direct Module Execution | Responsibility |
+| :--- | :--- | :--- | :--- |
+| **Activator** | `mcp-activator` | `python3 bootstrap.py` | Orchestration, Installation, Sync |
+| **Observer** | `mcp-observer` | `python3 -m mcp_inventory.cli` | UI/GUI, Health, Inventory |
+| **Surgeon** | `mcp-surgeon` | `python3 mcp_injector.py` | Injection, Config Hardening |
+| **Librarian** | `mcp-librarian` | `python3 mcp.py` | Knowledge SQLite, URL Persistence |
+
+---
+
+## 🖥️ GUI Management (The Observer Dashboard)
+
+The **Observer GUI** is your primary interface for monitoring the health and connection status of all Nexus components.
+
+*   **To Launch:**
+    ```bash
+    mcp-observer gui
+    # OR (Direct)
+    python3 -m mcp_inventory.cli gui
+    ```
+*   **Dashboard URL:** [http://localhost:8501](http://localhost:8501)
+*   **To Stop:**
+    - Press `Ctrl + C` in the terminal where the GUI is running.
+    - Closing the terminal session will also terminate the server.
+*   **To Restart:** Simply run the launch command again. The GUI will automatically re-index the current inventory.
+
+---
+
+## 🌍 Global Path & Workspace Context
+
+### 1. Setting the PATH
+For the `mcp-` commands to work from any directory, ensure your shell configuration (`~/.zshrc` or `~/.bashrc`) includes the Nexus bin directory:
+
+```bash
+export PATH="$HOME/.mcp-tools/bin:$PATH"
+```
+*(The Industrial/Standard bootstrap attempts to automate this step during installation.)*
+
+### 2. Execution Directory
+*   **Installation/Sync:** Always run `bootstrap.py` from the `repo-mcp-packager` root.
+*   **Daily Use:** Once installed, all `mcp-` commands can be executed from **any directory** within your workspace.
+
+---
 
 # Application Convergence & Synergy
 The "Nexus Application" mode is triggered when the bootstrapper detects all four modules (mcp-injector, mcp-link-library, mcp-server-manager, repo-mcp-packager) in the same workspace.
@@ -90,53 +159,7 @@ Global Path	Optional (Local first)	Recommended	Mandatory Enforcement
 
 ---
 
-## 🔐 Universal Safety & Backups
-
-Every modification creates a timestamped or `.backup` file. If the final write fails, the original config is untouched.
-
-```mermaid
-flowchart LR
-    A[Original Config] --> B{Structural Audit}
-    B -- Pass --> C[Backup & Modify]
-    B -- Fail --> E[Abort & Log]
-    C --> D[Atomic Commit]
-```
-
----
-
-## 🛠️ Nexus Command Reference (Surgeon Context)
-
-| Tool | Shared Command | Direct Module Execution |
-| :--- | :--- | :--- |
-| **Surgeon** | `mcp-surgeon` | `python3 mcp_injector.py` |
-| **Activator** | `mcp-activator` | `python3 bootstrap.py` |
-
----
-
-## 🖥️ GUI Management (Quick Ref)
-*   **Launch Dashboard:** `mcp-observer gui`
-*   **Stop:** `Ctrl + C` in the terminal.
-*   **URL:** [http://localhost:8501](http://localhost:8501)
-
----
-
-## 📚 Master Documentation
-For the complete suite experience and detailed procedures, see:
-👉 **[NEXUS_GUIDE.md](../repo-mcp-packager/NEXUS_GUIDE.md)**
-
----
-
-## 📚 Documentation (Low Density Deep Dives)
-
-Detailed technical manuals for engineering reference:
-
-*   **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Logic models, subsystems, and the injection engine.
-*   **[ENVIRONMENT.md](./ENVIRONMENT.md)**: IDE config paths, OS mapping, and dependency rules.
-*   **[FEATURES.md](./FEATURES.md)**: Command matrix, interactive menu, and feature scoring.
-
----
-
 ## 📝 Metadata
-*   **Status**: Hardened (Phase 9)
+*   **Status**: Production Ready / Hardened (Phase 9)
 *   **Author**: l00p3rl00p
 *   **Workflow**: Adheres to `@/fix-md-files-for-release`

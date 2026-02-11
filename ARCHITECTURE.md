@@ -1,78 +1,122 @@
-# Architecture - The Surgeon (mcp-injector)
+# Architecture - Git Repo MCP Converter & Installer
 
-**The technical blueprint for precision configuration management in the Workforce Nexus.**
+**The technical blueprint for the Workforce Nexus Activator.**
 
-This document provides a low-density, comprehensive deep dive into the internal logic, state machines, and modular subsystems that power the `mcp-injector`. It is intended for developers and architects who need to understand exactly how the system achieves industrial-level reliability when modifying IDE configuration files.
+This document provides a low-density, comprehensive deep dive into the internal logic, state machines, and modular subsystems that power the `repo-mcp-packager`. It is intended for developers and architects who need to understand exactly how the system achieves industrial-grade reliability.
 
 ---
 
-## 🔍 Nexus Suite Context
-The **Surgeon** is the configuration management engine of the **Workforce Nexus**. It ensures that tools managed by the Activator and discovered by the Observer are correctly registered in your IDEs. For the full architectural roadmap, see the [Master Nexus Guide](../repo-mcp-packager/NEXUS_GUIDE.md).
+## 🔍 Core Philosophy: The Clean Room Installer
 
-## 🏗 Core Philosophy: Surgical Precision
+The Activator follows the **Clean Room** principle. It treats every repository as a potentially hostile or cluttered environment and ensures that:
 
-The Surgeon follows the **Verify -> Backup -> Change -> Validate** loop. It treats user configuration files as mission-critical artifacts that must never be corrupted.
-
-1.  **Non-Destructive Parsing**: Uses the standard `json` library to parse and manipulate data as a Python dictionary, preserving as much structure as possible.
-2.  **Atomic Integrity**: Changes are never written directly to the target file. A temporary file is used to verify success before an atomic rename.
-3.  **Schema Drift Protection**: Detects if the internal structure of an IDE config has changed (e.g., from a list to an object) before attempting a write.
+1.  **Zero-Dep Bootstrap**: The core installer requires only the Python Standard Library.
+2.  **Volatile Isolation**: Dependencies are kept in local `.venv` or `node_modules` folders, never installed globally.
+3.  **Surgical Traceability**: Every bit flipped or file created is recorded in a manifest for atomic reversal.
 
 ---
 
 ## 🏗 Subsystem Breakdown
 
-### 1. The Injection Engine (`MCPInjector` class)
-The core logic for safe JSON manipulation.
+### 1. The Probe Layer (`audit.py`)
+The Probe layer is the system's "Sensory Organ." It performs non-destructive environment discovery.
 
-*   **`load_config()`**: Reads the target file. If missing, initializes a standard structure (e.g., `{"mcpServers": {}}`) to ensure the first injection succeeds.
-*   **`add_server()`**: Handles the delicate logic of inserting a new tool. It ensures that the `command`, `args`, and optional `env` blocks are correctly formatted.
-*   **`remove_server()`**: Safely extracts an entry by key, ensuring no trailing commas or broken brackets are left behind.
+*   **Capabilities**: Detects Shell type (bash/zsh), Python paths, Node/NPM availability, Docker daemon status, and PATH hygiene.
+*   **Safety**: Uses restricted subprocess calls to prevent side effects during auditing.
+*   **Output**: Generates an `EnvironmentAudit` object used to gate installation strategies.
 
-### 2. Validation & Auditing
-The Surgeon protects the user from "Bracket Hell" through two layers of defense.
+### 2. The Execution Engine (`install.py`)
+The "Workhorse" of the suite. It orchestrates the transition from raw code to a managed service.
 
-*   **Structural Audit (`_structural_audit`)**:
-    *   **Goal**: Detect type-level differences between the old and new config.
-    *   **Logic**: Recursively compares types of keys. If it finds that a known key has changed type (e.g., `mcpServers` was an object but is now a string), it aborts to prevent corruption.
-*   **Industrial Schema Validation (`_validate_with_schema`)**:
-    *   **Goal**: Ensure 100% compliance with IDE expectations.
-    *   **Logic**: If `jsonschema` is available in the environment (provided by the Industrial Nexus tier), it validates the final output against local schema definitions before writing.
+*   **Structural Audit**: Scans the project root for markers (`pyproject.toml`, `package.json`, `requirements.txt`).
+*   **Strategy Resolution**: Determines if the project should be a Managed Venv, a Lite Wrapper, or a Docker service.
+*   **Dependency Management**: Handles `pip install` and `npm install` with configurable timeouts and atomic failure handling.
 
-### 3. Safety & Backup Layer
-*   **Automatic Backups**: Every write operation triggers an immediate `.json.backup` copy of the original file.
-*   **Atomic Write**: The system writes to `config.json.tmp`, validates that the file is readable JSON, and then uses `os.replace` to commit the change. This prevents "partial writes" if the system crashes midway.
+### 3. The Sync & Injection Layer (`mcp_injector.py`)
+The "Surgeon" that bridges the gap between the installer and the user's IDE.
 
----
+*   **Bracket Hell Prevention**: Specialized JSON parser that handles comma placement and list management for IDE config files.
+*   **Atomic Transactions**: Always creates a `.backup` before writing. Uses temporary files and `os.replace` to prevent corruption.
 
-## ⚡ Integrated Nexus Logic
+### 4. The Bridge Generator (`bridge.py`)
+Converts legacy scripts into AI-accessible MCP tools.
 
-The Surgeon is suite-aware. Every time a client configuration is modified, it updates the global Workforce Nexus registry.
-
-*   **Global Sync**: Calls `update_global_config()` to store the location of the modified IDE config in `~/.mcp-tools/config.json`. This allows the Observer (manager) to find and monitor the servers later without a full system scan.
-*   **Auto-Chmod**: When injected, any shell scripts or python commands are passed through the Nexus permission-hardening filter to ensure they are executable (`chmod +x`).
+*   **Pattern Matching**: Scans for `if __name__ == "__main__":` and typical function signatures.
+*   **Wrapper Logic**: Generates a FastAPI-based (standard) or stdio-based (lite) MCP server that imports and executes the original functions.
 
 ---
 
-## 📂 Data Structures
+## 🔐 Universal Safety Protocol (USP)
 
-### IDE Configuration Mapping
-The Surgeon maintains a dictionary of known client paths across different platforms.
+The USP is active across all Reliability Tiers (Lite, Standard, Permanent).
 
-| Client | Path Pattern |
-| :--- | :--- |
-| **Claude** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| **Cursor** | `~/.cursor/mcp.json` |
-| **VS Code** | `~/.vscode/mcp_settings.json` |
+### Phase 1: Pre-flight
+Before a single byte is written:
+1.  **Write Test**: Verifies write permissions in the installation root.
+2.  **Storage Audit**: Verifies there is at least 100MB of free space (enough for a standard venv).
+3.  **Conflict Check**: Detects if an existing installation (manifest) exists and requires cleanup.
+
+### Phase 2: Atomic Tracking
+Every action taken is registered in a global `INSTALLED_ARTIFACTS` list.
+
+### Phase 3: Commit or Rollback
+*   **On Success**: A `manifest.json` is locked to disk.
+*   **On Failure**: The `rollback()` method executes, iterating backward through the artifact list and surgically removing every folder and file created during the session.
 
 ---
 
-## 🛡 Security & Permissions
-*   **Local Execution**: The Surgeon never makes network requests. It operates entirely on local filesystem state.
-*   **User Consent**: In interactive mode, every injection requires a final `[Y/n]` confirmation from the user after viewing a summary of the change.
+## 📂 Data Structures & Manifests
+
+### manifest.json Example
+Located in `<project_root>/.librarian/manifest.json`.
+
+```json
+{
+  "install_date": "2026-02-10 14:30:00",
+  "install_artifacts": [
+    "/Users/user/.mcp-tools/mcp-link-library",
+    "/Users/user/Dev/project/.venv"
+  ],
+  "install_mode": "permanent",
+  "remote_url": "https://github.com/...",
+  "version": "0.5.0-hardened"
+}
+```
+
+---
+
+## ⚡ Phase 9: Permissions & Resolution
+
+### Intelligent Entry-Point Resolution
+When multiple candidates exist (e.g., `run.py` and `run.sh`), the system applies the following recommendation logic:
+
+1.  **Preference**: `.sh` is always recommended over `.py` as it typically handles its own environment activation.
+2.  **User Choice**: If ambiguous, the user is prompted to select the primary entry point via a numbered menu.
+3.  **Hardening**: The selected file is run through `chmod +x` immediately.
+
+### Auto-Chmod Logic
+```python
+def ensure_executable(path: Path):
+    if not path.exists() or not path.is_file(): return
+    # Apply execute bit (0o111) while preserving other bits
+    path.chmod(path.stat().st_mode | 0o111)
+```
+
+---
+
+## 🌐 Mutual Discovery (The Bootstrap Loop)
+
+Each tool in the Nexus implements `bootstrap.py` with a recursive discovery loop:
+
+1.  **Level 0**: Is the sibling repo already in the parent folder?
+2.  **Level 1**: Is the tool already installed in `~/.mcp-tools`?
+3.  **Level 2**: Fetch from GitHub.
+
+This ensures that clicking "Install" on any one tool can safely and reliably bring the entire Workforce Nexus to life.
 
 ---
 
 ## 📝 Metadata
-*   **Status**: Hardened (Phase 9)
+*   **Status**: Production / Hardened (Phase 9)
 *   **Developer**: l00p3rl00p
-*   **Reference**: [ENVIRONMENT.md](./ENVIRONMENT.md) | [USER_OUTCOMES.md](./USER_OUTCOMES.md)
+*   **Reference**: [USER_OUTCOMES.md](./USER_OUTCOMES.md) | [ENVIRONMENT.md](./ENVIRONMENT.md)
