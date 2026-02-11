@@ -16,7 +16,7 @@ import sys
 import os
 import argparse
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import importlib.util
 
 __version__ = "0.1.0"
@@ -75,14 +75,151 @@ def update_global_config(ide_name: str, path: str):
     except Exception as e:
         print(f"⚠️  Failed to sync global config: {e}")
 
-KNOWN_CLIENTS = {
-    "xcode": "~/Library/Developer/Xcode/UserData/MCPServers/config.json",
-    "codex": "~/Library/Application Support/Codex/mcp_servers.json",
-    "claude": "~/Library/Application Support/Claude/claude_desktop_config.json",
-    "cursor": "~/.cursor/mcp.json",
-    "vscode": "~/.vscode/mcp_settings.json",
-    "aistudio": "~/.config/aistudio/mcp_servers.json",
-}
+def _client_specs() -> Dict[str, Dict[str, List[str]]]:
+    return {
+        "xcode": {
+            "configs": ["~/Library/Developer/Xcode/UserData/MCPServers/config.json"],
+            "markers": ["/Applications/Xcode.app"]
+        },
+        "codex": {
+            "configs": [
+                "~/Library/Application Support/Codex/mcp_servers.json",
+                "~/.config/codex/mcp_servers.json",
+                "%APPDATA%/Codex/mcp_servers.json"
+            ],
+            "markers": [
+                "/Applications/Codex.app",
+                "~/Applications/Codex.app",
+                "~/.config/Codex"
+            ]
+        },
+        "claude": {
+            "configs": [
+                "~/Library/Application Support/Claude/claude_desktop_config.json",
+                "~/.config/Claude/claude_desktop_config.json",
+                "%APPDATA%/Claude/claude_desktop_config.json"
+            ],
+            "markers": [
+                "/Applications/Claude.app",
+                "~/Applications/Claude.app"
+            ]
+        },
+        "cursor": {
+            "configs": [
+                "~/.cursor/mcp.json",
+                "~/Library/Application Support/Cursor/mcp.json",
+                "%APPDATA%/Cursor/mcp.json"
+            ],
+            "markers": ["/Applications/Cursor.app", "~/Applications/Cursor.app"]
+        },
+        "vscode": {
+            "configs": [
+                "~/.vscode/mcp_settings.json",
+                "~/Library/Application Support/Code/User/mcp_settings.json",
+                "%APPDATA%/Code/User/mcp_settings.json"
+            ],
+            "markers": ["/Applications/Visual Studio Code.app", "~/Applications/Visual Studio Code.app"]
+        },
+        "aistudio": {
+            "configs": [
+                "~/.config/aistudio/mcp_servers.json",
+                "~/Library/Application Support/Google/AIStudio/mcp_servers.json",
+                "%APPDATA%/Google/AIStudio/mcp_servers.json"
+            ],
+            "markers": [
+                "/Applications/Google AI Studio.app",
+                "~/Applications/Google AI Studio.app"
+            ]
+        },
+        "google-antigravity": {
+            "configs": [
+                "~/.config/aistudio/mcp_servers.json",
+                "~/Library/Application Support/Google/AIStudio/mcp_servers.json",
+                "%APPDATA%/Google/AIStudio/mcp_servers.json"
+            ],
+            "markers": [
+                "/Applications/Google AI Studio.app",
+                "~/Applications/Google AI Studio.app"
+            ]
+        }
+    }
+
+
+def _expand_path(raw_path: str) -> Path:
+    expanded = os.path.expandvars(raw_path)
+    return Path(expanded).expanduser()
+
+
+def get_known_clients() -> Dict[str, str]:
+    mapping: Dict[str, str] = {}
+    specs = _client_specs()
+    for name, spec in specs.items():
+        for candidate in spec["configs"]:
+            path = _expand_path(candidate)
+            if path.exists():
+                mapping[name] = str(path)
+                break
+        if name not in mapping:
+            mapping[name] = str(_expand_path(spec["configs"][0]))
+    return mapping
+
+
+KNOWN_CLIENTS = get_known_clients()
+
+
+def detect_installed_clients() -> Dict[str, Dict[str, Any]]:
+    detected: Dict[str, Dict[str, Any]] = {}
+    for client, spec in _client_specs().items():
+        config_candidates = [_expand_path(path) for path in spec["configs"]]
+        marker_candidates = [_expand_path(path) for path in spec["markers"]]
+
+        existing_config = next((p for p in config_candidates if p.exists()), None)
+        marker_hit = next((p for p in marker_candidates if p.exists()), None)
+
+        installed = existing_config is not None or marker_hit is not None
+        detected[client] = {
+            "installed": installed,
+            "config_path": existing_config or config_candidates[0],
+            "has_config": existing_config is not None,
+            "marker": str(marker_hit) if marker_hit else None
+        }
+    return detected
+
+
+def get_nexus_home() -> Path:
+    if sys.platform == "win32":
+        return Path(os.environ['USERPROFILE']) / ".mcp-tools"
+    return Path.home() / ".mcp-tools"
+
+
+def detect_package_components() -> Dict[str, Dict[str, Any]]:
+    """
+    Detect Nexus-created executable components and build injectable server configs.
+    """
+    nexus_home = get_nexus_home()
+    bin_dir = nexus_home / "bin"
+
+    components: Dict[str, Dict[str, Any]] = {}
+    if not bin_dir.exists():
+        return components
+
+    candidates = {
+        "nexus-activator": ("mcp-activator", []),
+        "nexus-observer": ("mcp-observer", []),
+        "nexus-surgeon": ("mcp-surgeon", []),
+        "nexus-librarian": ("mcp-librarian", ["--server"]),
+    }
+
+    for server_name, (binary_name, args) in candidates.items():
+        binary_path = bin_dir / binary_name
+        if binary_path.exists():
+            components[server_name] = {
+                "command": str(binary_path),
+                "args": args,
+                "source": "nexus-bin"
+            }
+
+    return components
 
 
 class MCPInjector:
@@ -94,7 +231,15 @@ class MCPInjector:
         """Load existing config or create empty structure"""
         if not self.config_path.exists():
             print(f"⚠️  Config file doesn't exist. Will create: {self.config_path}")
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            except PermissionError:
+                print(f"❌ Permission denied creating parent directory: {self.config_path.parent}")
+                print("   Hint: choose --config in a writable location or adjust directory permissions.")
+                sys.exit(1)
+            except Exception as e:
+                print(f"❌ Failed to prepare config directory: {e}")
+                sys.exit(1)
             return {"mcpServers": {}}
         
         try:
@@ -372,12 +517,79 @@ def interactive_add(injector: MCPInjector):
 def list_known_clients():
     """Show all known client config locations"""
     print("\n📂 Known MCP Client Locations:\n")
-    for client, path in KNOWN_CLIENTS.items():
+    for client, path in get_known_clients().items():
         expanded = Path(path).expanduser()
         exists = "✅" if expanded.exists() else "❌"
         print(f"{exists} {client.upper()}")
         print(f"   {path}")
         print()
+
+
+def startup_auto_detect_prompt():
+    if not sys.stdin.isatty():
+        return
+
+    detected = detect_installed_clients()
+    promptable: Dict[str, Dict[str, Any]] = {}
+    for name, info in detected.items():
+        if info["installed"] or name == "claude":
+            promptable[name] = info
+    if not promptable:
+        return
+
+    print("\n🔎 Detected MCP-capable IDE clients:")
+    for name, info in promptable.items():
+        cfg = info["config_path"]
+        if info["has_config"]:
+            state = "configured"
+        elif info["installed"]:
+            state = "install detected (no MCP config yet)"
+        else:
+            state = "not detected (common target)"
+        print(f"  - {name}: {state}")
+        print(f"    config: {cfg}")
+
+    confirm = input("\nInject MCP server config into detected clients now? [y/N]: ").strip().lower()
+    if confirm != "y":
+        return
+
+    selected = input("Enter client names (comma) or 'all': ").strip().lower()
+    if not selected:
+        return
+    if selected == "all":
+        targets = list(promptable.keys())
+    else:
+        targets = [item.strip() for item in selected.split(",") if item.strip() in promptable]
+    if not targets:
+        print("No valid clients selected.")
+        return
+
+    components = detect_package_components()
+    if not components:
+        print("\nℹ️  No package-created Nexus components detected in ~/.mcp-tools/bin.")
+        print("   Falling back to custom single-server interactive injection.")
+        for client in targets:
+            print(f"\n🎯 Target client: {client}")
+            injector = MCPInjector(Path(str(promptable[client]["config_path"])))
+            interactive_add(injector)
+        return
+
+    print("\n📦 Detected package-created components:")
+    for comp_name, comp in components.items():
+        print(f"  - {comp_name}: {comp['command']} {' '.join(comp['args'])}".strip())
+
+    for client in targets:
+        print(f"\n🎯 Target client: {client}")
+        injector = MCPInjector(Path(str(promptable[client]["config_path"])))
+        for comp_name, comp in components.items():
+            ask = input(f"Inject '{comp_name}' into {client}? [Y/n]: ").strip().lower()
+            if ask == "n":
+                continue
+            try:
+                injector.add_server(comp_name, comp["command"], comp["args"])
+            except Exception as e:
+                print(f"⚠️  Failed injecting {comp_name} into {client}: {e}")
+
 
 
 def main():
@@ -404,13 +616,14 @@ Examples:
     )
     
     parser.add_argument("--config", type=Path, help="Path to MCP config JSON file")
-    parser.add_argument("--client", choices=KNOWN_CLIENTS.keys(), help="Use a known client (xcode, claude, etc.)")
+    parser.add_argument("--client", choices=get_known_clients().keys(), help="Use a known client (xcode, claude, etc.)")
     parser.add_argument("--add", action="store_true", help="Add a new server (interactive)")
     parser.add_argument("--remove", metavar="NAME", help="Remove a server by name")
     parser.add_argument("--list", action="store_true", help="List all configured servers")
     parser.add_argument("--list-clients", action="store_true", help="Show all known client locations")
     parser.add_argument("--bootstrap", action="store_true", help="Bootstrap the Git-Packager workspace (fetch missing components)")
     
+    parser.add_argument("--startup-detect", action="store_true", help="Auto-detect installed clients and prompt for injection")
     args = parser.parse_args()
     
     # Handle --bootstrap
@@ -438,12 +651,17 @@ Examples:
         list_known_clients()
         return
     
+    if args.startup_detect:
+        startup_auto_detect_prompt()
+        return
+
     # Determine config path
     if args.client:
-        config_path = Path(KNOWN_CLIENTS[args.client]).expanduser()
+        config_path = Path(get_known_clients()[args.client]).expanduser()
     elif args.config:
         config_path = args.config
     else:
+        startup_auto_detect_prompt()
         parser.print_help()
         sys.exit(1)
     

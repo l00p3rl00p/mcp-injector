@@ -80,7 +80,7 @@ You'll see something like:
 
 This is where most mistakes happen. Follow the "Comma Rule" strictly.
 
-### ✅ CORRECT: Adding a Second Server
+### ✅ Adding a Second Server
 
 **BEFORE (one server):**
 ```json
@@ -113,8 +113,7 @@ This is where most mistakes happen. Follow the "Comma Rule" strictly.
 > **The Golden Rules of JSON:**
 > 1. Add a **comma** `,` after every entry EXCEPT the last one in a list or object.
 > 2. Ensure every opening `{` or `[` has a matching closing `}` or `]`.
-> 3. NO comma after the last entry
-> 4. Keep the same indentation level
+
 ---
 
 ## Step 4: Fill-in-the-Blank Template
@@ -267,3 +266,19 @@ python serverinstaller/install.py --attach-to <ide-name>
 ```
 
 The installer handles all the bracket/comma logic automatically.
+
+---
+
+## Startup Auto-Detect (Recommended)
+
+The injector now supports startup discovery for common MCP-capable IDEs and prompts before injection.
+
+```bash
+python mcp_injector.py --startup-detect
+```
+
+Behavior:
+* Detects common clients (`claude`, `codex`, `cursor`, `vscode`, `xcode`, `aistudio`, `google-antigravity`).
+* Always includes **Claude** in the prompt set as a common injection target.
+* If the full Nexus package is detected (`~/.mcp-tools/bin`), it offers injection for package-created components (`nexus-activator`, `nexus-observer`, `nexus-surgeon`, `nexus-librarian`).
+* For each component, injection is explicit: **inject now** or **skip now**.
