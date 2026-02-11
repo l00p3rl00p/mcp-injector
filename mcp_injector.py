@@ -15,6 +15,7 @@ import json
 import sys
 import os
 import argparse
+import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import importlib.util
@@ -60,12 +61,21 @@ def update_global_config(ide_name: str, path: str):
     config_path = get_global_config_path()
     try:
         if config_path.exists():
-            data = json.loads(config_path.read_text())
+            try:
+                data = json.loads(config_path.read_text())
+            except json.JSONDecodeError:
+                stamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+                corrupt_backup = config_path.with_suffix(f".json.corrupt.{stamp}")
+                config_path.replace(corrupt_backup)
+                print(f"⚠️  Recovered malformed global config: {corrupt_backup}")
+                data = {}
         else:
             config_path.parent.mkdir(parents=True, exist_ok=True)
             data = {}
-        
-        if GLOBAL_CONFIG_KEY not in data:
+
+        if not isinstance(data, dict):
+            data = {}
+        if GLOBAL_CONFIG_KEY not in data or not isinstance(data.get(GLOBAL_CONFIG_KEY), dict):
             data[GLOBAL_CONFIG_KEY] = {}
         
         data[GLOBAL_CONFIG_KEY][ide_name] = str(Path(path).expanduser().resolve())
@@ -254,8 +264,15 @@ class MCPInjector:
         except json.JSONDecodeError as e:
             print(f"❌ Invalid JSON in {self.config_path}")
             print(f"   Error: {e}")
-            # SECURITY: Do not automatically overwrite corrupt config without user consent
-            sys.exit(1)
+            stamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            corrupt_backup = self.config_path.with_suffix(f".json.corrupt.{stamp}")
+            try:
+                self.config_path.replace(corrupt_backup)
+                print(f"🩹 Recovered by moving corrupt file to: {corrupt_backup}")
+                return {"mcpServers": {}}
+            except Exception as backup_error:
+                print(f"❌ Recovery failed: {backup_error}")
+                sys.exit(1)
         except Exception as e:
             print(f"❌ Failed to load config: {e}")
             sys.exit(1)
