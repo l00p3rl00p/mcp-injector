@@ -2,6 +2,7 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+Thumbs.db
 
 # Dependencies
 node_modules/
