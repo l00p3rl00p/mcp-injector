@@ -38,13 +38,38 @@ Scope note: to avoid documentation drift, this table lists **only commands/flags
 
 | Action | Direct Command |
 | :--- | :--- |
-| **Inject Server (interactive)** | `python3 mcp_injector.py --add` *(optionally use --config PATH or --client NAME)* |
+| **Inject Server (custom command+args)** | `python3 mcp_injector.py --add` *(optionally use `--config PATH` or `--client NAME`)* |
 | **Remove Server** | `python3 mcp_injector.py --remove` |
 | **List Config** | `python3 mcp_injector.py --list` |
 | **List Known Clients** | `python3 mcp_injector.py --list-clients` |
 | **Startup Detect + Prompt Inject** | `python3 mcp_injector.py --startup-detect` |
 
 *Supported Clients: `claude`, `cursor`, `vscode`, `xcode`, `codex`, `aistudio`, `google-antigravity` (alias of AI Studio)*
+
+### Injection modes (important)
+There are two different workflows, and they behave differently:
+
+1) **Detected injection** (`--startup-detect`)
+* Purpose: auto-detect *clients* (Codex/Claude/etc.) and offer injection for *suite-known* MCP stdio servers (currently `nexus-librarian`).
+* Notes:
+  * This prompt is **TTY-only**. If stdin is not interactive (GUI runners/agents), it will skip prompting.
+  * This does **not** let you redefine the injected command; it uses detected components when available.
+
+2) **Custom injection** (`--add`)
+* Purpose: you define the server entry explicitly (**name + command + args + env**) and the injector writes it safely into the selected client config.
+* Use this when you want to inject **any** MCP stdio server (not just the suite-known defaults).
+
+### Suite stdio server (what to inject)
+Only inject tools that speak MCP over **stdio** (JSON-RPC on stdout). In this suite, the injectable stdio server is:
+* `nexus-librarian` → command `mcp-librarian` with args `--server`
+
+Concrete examples (global install):
+* List Codex config servers: `mcp-surgeon --client codex --list`
+* Inject the suite server into Codex (interactive): `mcp-surgeon --client codex --add`
+* Remove it: `mcp-surgeon --client codex --remove nexus-librarian`
+
+Avoid injecting these CLIs as MCP servers (they are not stdio MCP servers):
+* `mcp-activator`, `mcp-observer`, `mcp-surgeon`
 
 ---
 
@@ -75,7 +100,14 @@ Scope note: to avoid documentation drift, this table lists **only commands/flags
 *   **Restarting**: Just rerun the command. It will automatically re-index your active servers.
 
 ### 3. PATH Setup
-If `mcp-` commands are not found, add this to your `~/.zshrc` (macOS) or `~/.bashrc`:
+By default, Industrial installs place short-command wrappers in `~/.local/bin`.
+
+If `mcp-` commands are not found, first add this to your `~/.zshrc` (macOS) or `~/.bashrc`:
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Optional (opt-in): you can also add the Nexus central bin directory:
 ```bash
 export PATH="$HOME/.mcp-tools/bin:$PATH"
 ```

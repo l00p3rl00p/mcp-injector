@@ -19,6 +19,8 @@ import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import importlib.util
+import shutil
+import shlex
 
 __version__ = "0.1.0"
 
@@ -199,6 +201,7 @@ def detect_installed_clients() -> Dict[str, Dict[str, Any]]:
             "installed": installed,
             "config_path": existing_config or config_candidates[0],
             "has_config": existing_config is not None,
+            "has_marker": marker_hit is not None,
             "marker": str(marker_hit) if marker_hit else None
         }
     return detected
@@ -481,34 +484,108 @@ def interactive_add(injector: MCPInjector):
     """Interactive mode for adding a server"""
     print("\n🔧 Add MCP Server (Interactive Mode)\n")
     
-    # Common presets
-    presets = {
-        "1": ("agent-browser", "npx", ["-y", "@vercel/agent-browser", "mcp"]),
-        "2": ("aistudio", "npx", ["-y", "aistudio-mcp-server"]),
-        "3": ("notebooklm", "npx", ["-y", "notebooklm-mcp-cli"]),
-        "4": ("custom", None, None),
-    }
+    components = detect_package_components()
+    has_npx = bool(shutil.which("npx"))
+
+    # Menu options are intentionally "truthy":
+    # - Suite servers are detected from the local install (recommended).
+    # - npx items are templates (not detected) and only shown if npx exists.
+    menu: Dict[str, tuple] = {}
+    idx = 1
+    if components:
+        menu[str(idx)] = ("nexus-detected", None, None)
+        idx += 1
+    if has_npx:
+        menu[str(idx)] = ("agent-browser", "npx", ["-y", "@vercel/agent-browser", "mcp"])
+        idx += 1
+        menu[str(idx)] = ("aistudio", "npx", ["-y", "aistudio-mcp-server"])
+        idx += 1
+        menu[str(idx)] = ("notebooklm", "npx", ["-y", "notebooklm-mcp-cli"])
+        idx += 1
+    menu[str(idx)] = ("custom", None, None)
     
-    print("Quick Presets:")
-    print("  1. Agent Browser (Vercel)")
-    print("  2. AI Studio (Google)")
-    print("  3. NotebookLM")
-    print("  4. Custom (manual entry)")
+    print("Choices:")
+    if components:
+        print(f"  1. MCP Nexus Suite (internal stdio servers)")
+    if has_npx:
+        base = 2 if components else 1
+        print("\nTemplates (requires Node.js + npx; not auto-detected):")
+        print(f"  {base}. Agent Browser (Vercel)")
+        print(f"  {base + 1}. AI Studio (Google)")
+        print(f"  {base + 2}. NotebookLM")
+        idx_custom = base + 3
+    else:
+        idx_custom = 2 if components else 1
+    print(f"\n  {idx_custom}. Custom (manual entry)")
     
-    choice = input("\nSelect preset [1-4]: ").strip()
+    choice = input("\nSelect choice number (or 'custom' / 'nexus', Enter to cancel): ").strip().lower()
+    if not choice:
+        print("❌ Cancelled")
+        sys.exit(0)
+
+    if choice in {"c", "custom"}:
+        # Map to the custom option regardless of numbering.
+        for k, (name, _cmd, _args) in menu.items():
+            if name == "custom":
+                choice = k
+                break
+    if choice in {"n", "nexus"}:
+        # Map to the suite-detected option regardless of numbering.
+        for k, (name, _cmd, _args) in menu.items():
+            if name == "nexus-detected":
+                choice = k
+                break
     
-    if choice not in presets:
+    if choice not in menu:
         print("❌ Invalid choice")
         sys.exit(1)
     
-    preset_name, preset_cmd, preset_args = presets[choice]
+    preset_name, preset_cmd, preset_args = menu[choice]
     
-    if choice == "4":
+    if preset_name == "nexus-detected":
+        # Suite-detected MCP stdio servers (stdio JSON-RPC on stdout)
+        ordered = sorted(components.items(), key=lambda kv: kv[0])
+        print("\n📦 Detected Nexus MCP stdio servers:")
+        for idx, (comp_name, comp) in enumerate(ordered, start=1):
+            cmd = comp.get("command")
+            args = comp.get("args", [])
+            printable = f"{cmd} {' '.join(args)}".strip()
+            print(f"  {idx}) {comp_name}: {printable}")
+
+        raw = input("\nSelect server number (or Enter to cancel): ").strip()
+        if not raw:
+            print("❌ Cancelled")
+            sys.exit(0)
+        try:
+            n = int(raw)
+        except Exception:
+            print("❌ Invalid choice")
+            sys.exit(1)
+        if n < 1 or n > len(ordered):
+            print("❌ Invalid choice")
+            sys.exit(1)
+
+        name, comp = ordered[n - 1]
+        command = str(comp["command"])
+        args = list(comp.get("args", []))
+        print(f"\n📦 Using suite server: {name}")
+        print(f"   Command: {command} {' '.join(args)}".strip())
+
+    elif preset_name == "custom":
         # Custom entry
         name = input("Server name: ").strip()
-        command = input("Command (e.g., npx, /path/to/bin): ").strip()
-        args_input = input("Args (comma-separated, e.g., -y,package-name): ").strip()
-        args = [a.strip() for a in args_input.split(",")] if args_input else []
+        command = input("Command (e.g., /path/to/bin or python3): ").strip()
+        print("\nArgs tips:")
+        print("  - Shell-style args:   --server --foo bar")
+        print("  - Comma-separated:    --server,--foo,bar")
+        print("  - Example (Librarian stdio): --server")
+        args_input = input("Args: ").strip()
+        if not args_input:
+            args = []
+        elif "," in args_input:
+            args = [a.strip() for a in args_input.split(",") if a.strip()]
+        else:
+            args = shlex.split(args_input)
     else:
         # Preset
         name = preset_name
@@ -578,54 +655,92 @@ def startup_auto_detect_prompt():
     detected = detect_installed_clients()
     promptable: Dict[str, Dict[str, Any]] = {}
     for name, info in detected.items():
-        if info["installed"] or name == "claude":
+        if info["installed"]:
             promptable[name] = info
     if not promptable:
         return
 
-    print("\n🔎 Detected MCP-capable IDE clients:")
-    for name, info in promptable.items():
+    print("\nDetected MCP-capable IDE clients:")
+    ordered = sorted(promptable.items(), key=lambda kv: kv[0])
+    for idx, (name, info) in enumerate(ordered, start=1):
         cfg = info["config_path"]
         if info["has_config"]:
-            state = "configured"
-        elif info["installed"]:
-            state = "install detected (no MCP config yet)"
+            if info.get("has_marker"):
+                state = "configured"
+            else:
+                state = "config file exists (app not detected)"
         else:
-            state = "not detected (common target)"
-        print(f"  - {name}: {state}")
+            state = "install detected (no MCP config yet)"
+        print(f"  {idx}) {name}: {state}")
         print(f"    config: {cfg}")
 
-    confirm = input("\nInject MCP server config into detected clients now? [y/N]: ").strip().lower()
-    if confirm != "y":
+    want = input("\nDo you want to inject/remove MCP servers in any of these clients now? [y/N]: ").strip().lower()
+    if want != "y":
         return
 
-    selected = input("Enter client names (comma) or 'all': ").strip().lower()
-    if not selected:
+    raw = input("Select target clients (e.g. 1 or 1,3) or 'all' (Enter to cancel): ").strip().lower()
+    if not raw:
         return
-    if selected == "all":
-        targets = list(promptable.keys())
+    if raw == "all":
+        targets = [name for name, _info in ordered]
     else:
-        targets = [item.strip() for item in selected.split(",") if item.strip() in promptable]
+        targets = []
+        parts = [p.strip() for p in raw.split(",") if p.strip()]
+        for p in parts:
+            try:
+                n = int(p)
+            except Exception:
+                continue
+            if 1 <= n <= len(ordered):
+                targets.append(ordered[n - 1][0])
     if not targets:
-        print("No valid clients selected.")
+        print("No valid clients selected (use numbers from the list).")
         return
 
-    components = detect_package_components()
-    if not components:
-        print("\nℹ️  No package-created Nexus components detected in ~/.mcp-tools/bin.")
-        print("   Falling back to custom single-server interactive injection.")
+    print("\nWhat do you want to do?")
+    print("  1) Inject detected suite servers (if available)")
+    print("  2) Define a custom server and inject it")
+    print("  3) Remove an existing server from client config(s)")
+    action = input("\nChoice [1/2/3] (Enter to cancel): ").strip()
+    if not action:
+        return
+    if action not in {"1", "2", "3"}:
+        print("Invalid choice.")
+        return
+
+    if action == "3":
+        name = input("\nServer name to remove (exact): ").strip()
+        if not name:
+            return
         for client in targets:
-            print(f"\n🎯 Target client: {client}")
+            print(f"\nTarget client: {client}")
+            injector = MCPInjector(Path(str(promptable[client]["config_path"])))
+            injector.remove_server(name)
+        return
+
+    if action == "2":
+        for client in targets:
+            print(f"\nTarget client: {client}")
             injector = MCPInjector(Path(str(promptable[client]["config_path"])))
             interactive_add(injector)
         return
 
-    print("\n📦 Detected package-created components:")
+    components = detect_package_components()
+    if not components:
+        print("\nNo package-created components detected in ~/.mcp-tools/bin.")
+        print("   Falling back to custom single-server interactive injection.")
+        for client in targets:
+            print(f"\nTarget client: {client}")
+            injector = MCPInjector(Path(str(promptable[client]["config_path"])))
+            interactive_add(injector)
+        return
+
+    print("\nDetected package-created components:")
     for comp_name, comp in components.items():
         print(f"  - {comp_name}: {comp['command']} {' '.join(comp['args'])}".strip())
 
     for client in targets:
-        print(f"\n🎯 Target client: {client}")
+        print(f"\nTarget client: {client}")
         injector = MCPInjector(Path(str(promptable[client]["config_path"])))
         for comp_name, comp in components.items():
             ask = input(f"Inject '{comp_name}' into {client}? [Y/n]: ").strip().lower()
@@ -634,7 +749,107 @@ def startup_auto_detect_prompt():
             try:
                 injector.add_server(comp_name, comp["command"], comp["args"])
             except Exception as e:
-                print(f"⚠️  Failed injecting {comp_name} into {client}: {e}")
+                print(f"Warning: failed injecting {comp_name} into {client}: {e}")
+
+
+def _load_mcp_servers(path: Path) -> Dict[str, Any]:
+    """
+    Best-effort load of a client MCP config file.
+    Never prompts. Never exits the process.
+    """
+    try:
+        if not path.exists():
+            return {}
+        data = json.loads(path.read_text(encoding="utf-8"))
+        servers = data.get("mcpServers", {})
+        return servers if isinstance(servers, dict) else {}
+    except Exception:
+        return {}
+
+
+def list_all_clients_servers(*, allow_prompt_removal: bool = True) -> None:
+    detected = detect_installed_clients()
+    installed = [(name, info) for name, info in sorted(detected.items()) if info.get("installed")]
+    if not installed:
+        print("No MCP-capable clients detected.")
+        return
+
+    entries: List[Dict[str, Any]] = []
+    idx = 1
+    for client, info in installed:
+        cfg_path = Path(str(info.get("config_path"))).expanduser()
+        servers = _load_mcp_servers(cfg_path)
+        for server_name, server_cfg in sorted(servers.items()):
+            if not isinstance(server_cfg, dict):
+                continue
+            cmd = server_cfg.get("command", "")
+            args = server_cfg.get("args", [])
+            managed = bool(server_cfg.get("_shesha_managed") is True)
+            entries.append(
+                {
+                    "idx": idx,
+                    "client": client,
+                    "config": str(cfg_path),
+                    "name": server_name,
+                    "command": cmd,
+                    "args": args if isinstance(args, list) else [],
+                    "managed": managed,
+                }
+            )
+            idx += 1
+
+    print("\nMCP servers across detected clients\n")
+    last_client = None
+    for item in entries:
+        if item["client"] != last_client:
+            last_client = item["client"]
+            print(f"\n[{item['client']}]")
+            print(f"config: {item['config']}")
+        managed = "*" if item["managed"] else " "
+        cmdline = " ".join([str(item["command"]), *[str(a) for a in item["args"]]]).strip()
+        print(f"{item['idx']:>3}) {managed} {item['name']}")
+        print(f"     {cmdline}")
+
+    if not entries:
+        print("(none found)")
+        return
+
+    if not (allow_prompt_removal and sys.stdin.isatty()):
+        return
+
+    confirm = input("\nRemove any entries by number? [y/N]: ").strip().lower()
+    if confirm != "y":
+        return
+
+    raw = input("Enter number(s) to remove (comma-separated): ").strip()
+    if not raw:
+        return
+
+    targets = set()
+    for part in [p.strip() for p in raw.split(",") if p.strip()]:
+        try:
+            targets.add(int(part))
+        except Exception:
+            continue
+
+    to_remove = [e for e in entries if e["idx"] in targets]
+    if not to_remove:
+        print("No valid selections.")
+        return
+
+    by_config: Dict[str, List[Dict[str, Any]]] = {}
+    for e in to_remove:
+        by_config.setdefault(e["config"], []).append(e)
+
+    for config_path_str, group in by_config.items():
+        config_path = Path(config_path_str).expanduser()
+        injector = MCPInjector(config_path)
+        for e in group:
+            if not e["managed"]:
+                warn = input(f"'{e['name']}' in {e['client']} is not marked _shesha_managed. Remove anyway? [y/N]: ").strip().lower()
+                if warn != "y":
+                    continue
+            injector.remove_server(e["name"])
 
 
 
@@ -643,6 +858,14 @@ def main():
         description="MCP JSON Injector - Safely modify MCP config files",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Commands (what they do):
+  mcp-surgeon --startup-detect        Detect clients and guide inject/remove (TTY only)
+  mcp-surgeon --list-clients          Show known client config locations
+  mcp-surgeon --client claude --list  List servers in Claude config
+  mcp-surgeon --client claude --add   Add a server entry to Claude (interactive)
+  mcp-surgeon --client claude --remove <name>
+                                     Remove one server entry by name
+
 Examples:
   # Interactive mode (recommended)
   python mcp_injector.py --config ~/Library/Application\ Support/Claude/claude_desktop_config.json --add
@@ -707,6 +930,17 @@ Examples:
     elif args.config:
         config_path = args.config
     else:
+        if args.add:
+            if not sys.stdin.isatty():
+                print("❌ Missing target client/config for --add (non-interactive).")
+                print("   Provide one of:")
+                print("     - --client claude|codex|cursor|vscode|xcode|aistudio")
+                print("     - --config /path/to/mcp_config.json")
+                print("\nExample (inject suite server into Claude):")
+                print("  mcp-surgeon --client claude --add")
+                sys.exit(1)
+            startup_auto_detect_prompt()
+            return
         startup_auto_detect_prompt()
         parser.print_help()
         sys.exit(1)
