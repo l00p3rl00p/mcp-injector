@@ -4,6 +4,15 @@
 
 The **Surgeon** (`mcp-injector`) is responsible for the delicate task of modifying IDE configuration files to "inject" MCP servers. It handles the complexity of JSON manipulation, path resolution, and backups, ensuring your IDEs (Claude Desktop, Cursor, etc.) are always correctly connected.
 
+## 🚀 Quick Start (Standalone)
+
+To interactively configure your IDEs:
+```bash
+python3 mcp_injector.py interactive
+```
+
+> **Part of the Workforce Nexus Suite**: For full orchestration and global command setup, see the [Master README](../README.md).
+
 ---
 
 ## 🌟 Core Capabilities

@@ -22,6 +22,12 @@ import importlib.util
 import shutil
 import shlex
 
+try:
+    from nexus_session_logger import NexusSessionLogger
+    session_logger = NexusSessionLogger()
+except ImportError:
+    session_logger = None
+
 __version__ = "0.1.0"
 
 # Best-practice guardrails: these Nexus binaries are CLIs, not MCP servers over stdio.
@@ -439,6 +445,9 @@ class MCPInjector:
         # Save
         self.save_config(config)
         
+        if session_logger:
+            session_logger.log_command(f"inject {name}", "SUCCESS", result=str(self.config_path))
+            
         print(f"🎉 Added server '{name}'")
         self.show_summary(config)
     
@@ -453,6 +462,9 @@ class MCPInjector:
         del config["mcpServers"][name]
         self.save_config(config)
         
+        if session_logger:
+            session_logger.log_command(f"remove {name}", "SUCCESS", result=str(self.config_path))
+            
         print(f"🗑️  Removed server '{name}'")
         self.show_summary(config)
     
