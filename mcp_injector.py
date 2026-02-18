@@ -468,11 +468,15 @@ class MCPInjector:
         print(f"🗑️  Removed server '{name}'")
         self.show_summary(config)
     
-    def list_servers(self):
+    def list_servers(self, *, json_mode: bool = False):
         """List all configured MCP servers"""
         config = self.load_config()
         servers = config.get("mcpServers", {})
         
+        if json_mode:
+            print(json.dumps(servers))
+            return
+
         if not servers:
             print("📭 No MCP servers configured")
             return
@@ -901,7 +905,8 @@ Examples:
     parser.add_argument("--add", action="store_true", help="Add a new server (interactive)")
     parser.add_argument("--remove", metavar="NAME", help="Remove a server by name")
     parser.add_argument("--list", action="store_true", help="List all configured servers")
-    parser.add_argument("--list-clients", action="store_true", help="Show all known client locations")
+    parser.add_argument('--list-clients', action='store_true', help="List all known client locations")
+    parser.add_argument('--json', action='store_true', help="Output in raw JSON format for agent-side processing")
     parser.add_argument("--bootstrap", action="store_true", help="Bootstrap the Git-Packager workspace (fetch missing components)")
     
     parser.add_argument("--startup-detect", action="store_true", help="Auto-detect installed clients and prompt for injection")
@@ -965,7 +970,7 @@ Examples:
     elif args.remove:
         injector.remove_server(args.remove)
     elif args.list:
-        injector.list_servers()
+        injector.list_servers(json_mode=args.json)
     else:
         parser.print_help()
 
