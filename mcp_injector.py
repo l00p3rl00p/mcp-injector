@@ -969,6 +969,13 @@ Examples:
     elif args.config:
         config_path = args.config
     else:
+        if args.list:
+            # --list without --client gives a cryptic error — provide clarity
+            print("❌ --list requires a target client. Specify one of:")
+            print("     --client claude|codex|cursor|vscode|xcode|aistudio|google-antigravity")
+            print("\nExample:")
+            print("  python3 mcp_injector.py --client claude --list")
+            sys.exit(1)
         if args.add:
             if not sys.stdin.isatty():
                 print("❌ Missing target client/config for --add (non-interactive).")
