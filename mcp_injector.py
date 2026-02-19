@@ -914,6 +914,10 @@ Examples:
     parser.add_argument("--config", type=Path, help="Path to MCP config JSON file")
     parser.add_argument("--client", choices=get_known_clients().keys(), help="Use a known client (xcode, claude, etc.)")
     parser.add_argument("--add", action="store_true", help="Add a new server (interactive)")
+    parser.add_argument("--name", help="Server name (for non-interactive --add)")
+    parser.add_argument("--command", help="Command to run (for non-interactive --add)")
+    parser.add_argument("--args", nargs='+', help="Arguments for command (for non-interactive --add)")
+    
     parser.add_argument("--remove", metavar="NAME", help="Remove a server by name")
     parser.add_argument("--list", action="store_true", help="List all configured servers")
     parser.add_argument('--list-clients', action='store_true', help="List all known client locations")
@@ -984,7 +988,13 @@ Examples:
     
     # Execute action
     if args.add:
-        interactive_add(injector)
+        if args.name and args.command:
+            # Non-interactive Mode
+            cmd_args = args.args or []
+            injector.add_server(args.name, args.command, cmd_args)
+        else:
+            # Interactive Mode
+            interactive_add(injector)
     elif args.remove:
         injector.remove_server(args.remove)
     elif args.list:
