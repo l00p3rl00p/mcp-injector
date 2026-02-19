@@ -28,7 +28,7 @@ try:
 except ImportError:
     session_logger = None
 
-__version__ = "0.1.0"
+__version__ = "3.1.0"
 
 # Best-practice guardrails: these Nexus binaries are CLIs, not MCP servers over stdio.
 # Injecting them into MCP clients (Claude/Codex/etc.) will cause JSON parse errors.
@@ -741,6 +741,17 @@ def startup_auto_detect_prompt():
             interactive_add(injector)
         return
 
+    # Forge Target Injection (SC-7)
+    forge_target = getattr(sys, "_nexus_forge_target", None)
+    if action == "1" and forge_target:
+        for client in targets:
+            print(f"\nTarget client: {client}")
+            injector = MCPInjector(Path(str(promptable[client]["config_path"])))
+            name = forge_target.name
+            cmd = f"python3 {forge_target / 'mcp_server.py'}"
+            injector.add_server(name, "python3", [str(forge_target / 'mcp_server.py')])
+        return
+
     components = detect_package_components()
     if not components:
         print("\nNo package-created components detected in ~/.mcp-tools/bin.")
@@ -910,7 +921,14 @@ Examples:
     parser.add_argument("--bootstrap", action="store_true", help="Bootstrap the Git-Packager workspace (fetch missing components)")
     
     parser.add_argument("--startup-detect", action="store_true", help="Auto-detect installed clients and prompt for injection")
+    parser.add_argument("--forge-target", type=Path, help="Inject a specific forged server path")
     args = parser.parse_args()
+    
+    if args.forge_target:
+        # Pass this to the startup prompt logic
+        sys._nexus_forge_target = args.forge_target
+        startup_auto_detect_prompt()
+        return
     
     # Handle --bootstrap
     if args.bootstrap:
