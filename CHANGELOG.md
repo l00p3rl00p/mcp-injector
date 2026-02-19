@@ -1,5 +1,12 @@
 # Changelog - MCP Surgeon (mcp-injector)
 
+## [3.2.0] - 2026-02-19
+
+### Fixes
+- `--list` without `--client` now exits with code 1 and a clear, actionable error message instead of a cryptic failure.
+
+---
+
 ## [2.0.0] - 2026-02-18
 
 ### 🛡️ Safety & Governance
