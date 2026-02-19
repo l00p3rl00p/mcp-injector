@@ -1,6 +1,10 @@
 # Changelog - MCP Surgeon (mcp-injector)
 
-## [3.2.0] - 2026-02-19
+## [3.2.1] - 2026-02-19
+
+### Improvements
+- **Interactive Setup**: Integrated Surgeon into the root `./nexus.sh` flow for guided IDE configuration.
+- **Suite Sync**: Version alignment with Nexus v3.2.1.
 
 ### Fixes
 - `--list` without `--client` now exits with code 1 and a clear, actionable error message instead of a cryptic failure.
@@ -29,4 +33,4 @@
 - Surgical rollback capabilities.
 
 ---
-*Status: Production Ready (v2.0.0)*
+*Status: Production Ready (v3.2.1)*
