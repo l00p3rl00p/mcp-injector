@@ -2,64 +2,51 @@
 
 **The Precision Configuration Tool for the Workforce Nexus.**
 
-The **Surgeon** (`mcp-injector`) is responsible for the delicate task of modifying IDE configuration files to "inject" MCP servers. It handles the complexity of JSON manipulation, path resolution, and backups, ensuring your IDEs (Claude Desktop, Cursor, etc.) are always correctly connected.
+The **Surgeon** (`mcp-injector`) is responsible for the delicate task of modifying IDE configuration files to "inject" MCP servers. In v3.2.1, it is fully integrated into the **True Start** protocol for seamless onboarding.
 
-## 🚀 Quick Start (Standalone)
+## 🚀 Quick Start (Suite Mode)
 
-To interactively configure your IDEs:
+The Surgeon is automatically triggered during the master setup:
 ```bash
-python3 mcp_injector.py interactive
+../nexus.sh
 ```
 
-> **Part of the Workforce Nexus Suite**: For full orchestration and global command setup, see the [Master README](../README.md).
+**Standalone Interactive Config:**
+```bash
+python3 mcp_injector_install.sh
+```
 
 ---
 
-## 🌟 Core Capabilities
+## 🌟 Capabilities (v3.2.1)
 
-### 1. Multi-Client Support
+### 1. Multi-Client Auto-Detection
 Natively understands the configuration formats and locations for:
 - **Claude Desktop** (`claude_desktop_config.json`)
-- **Cursor** (via `.cursor/mcp.json` or equivalent)
-- **Generic Clients** (Standardized MCP config compliance)
+- **Cursor**
+- **Artifacts / AI Studio** (Experimental)
 
-### 2. Safety First
-- **Automatic Backups**: Never modifies a file without creating a timestamped backup first.
-- **Validation**: Verifies the JSON syntax before and after modification.
-- **Atomic Writes**: Ensures no partial updates corrupt your config.
+### 2. Guarded Injections
+- **Atomic Backups**: Every write creates a `.bak` copy of your JSON config.
+- **Syntactic Validation**: Prevents injection if the target JSON is invalid.
+- **Noclobber-Ready**: Respects the Global Security Mandate for file integrity.
 
-### 3. Interactive & Headless
-- **Interactive**: Guides you through selecting clients and servers.
-- **Headless**: Can be scripted by agents to auto-configure environments during setup.
+### 3. Suite Integration
+- **Direct Attachment**: Can be called by the `Activator` to immediately register newly forged servers into your preferred IDE.
+- **Zero-Dep**: No requirements outside the Python Standard Library.
 
 ---
 
-## 🛠️ Usage
+## 🛠️ Global Command Reference
 
-### Quick Injection
-```bash
-# Add a server to Claude Desktop
-python3 mcp_injector.py --client claude --add "my-server" --command "python3" --args "server.py"
-```
-
-### Removal
-```bash
-# Remove a server
-python3 mcp_injector.py --client claude --remove "my-server"
-```
-
-### Discovery
-```bash
-# List all configured servers in Claude
-python3 mcp_injector.py --client claude --list
-```
-
-### Standalone Operation
-The Surgeon is a single-file python script (`mcp_injector.py`) with zero external dependencies beyond the standard library. It can be dropped into any project to manage MCP configurations.
+| Command | Action |
+| :--- | :--- |
+| `mcp-surgeon --list` | List all configured servers in detected clients. |
+| `mcp-surgeon --client claude --add X` | Surgical injection into Claude Desktop. |
+| `mcp-surgeon --client cursor --remove Y` | Surgical removal from Cursor. |
 
 ---
 
 ## 📝 Metadata
-* **Status**: Production Ready
-* **Author**: l00p3rl00p
-* **Part of**: The Nexus Workforce Suite
+* **Status**: Production Ready (v3.2.1)
+* **Part of**: The Workforce Nexus Suite
