@@ -7,7 +7,8 @@ from flask_cors import CORS
 from pathlib import Path
 
 app = Flask(__name__)
-CORS(app) # Allow Vite dev server to access
+# SECURITY: Restrict CORS to local dev origins only (this GUI is local-first).
+CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://localhost:5001", "http://127.0.0.1:5001"])
 
 LOG_PATH = Path.home() / ".mcpinv" / "session.jsonl"
 
@@ -143,7 +144,11 @@ def control_server():
                 return jsonify({"error": "No start command defined for this server"}), 400
             
             import subprocess
-            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # SECURITY: avoid shell=True. Treat inventory commands as argv, not shell strings.
+            argv = shlex.split(cmd) if isinstance(cmd, str) else cmd
+            if not isinstance(argv, list) or not argv:
+                return jsonify({"error": "Invalid start command"}), 400
+            proc = subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             pids[s_id] = proc.pid
             
             with open(runtime_path, "w") as f:
@@ -172,5 +177,6 @@ if __name__ == '__main__':
     # Running on 5001 to avoid conflict with standard Streamlit/Vite ports
     print("🚀 Starting GUI Bridge on port 5001...")
     # debug=True causes reloader issues in some environments.
-    # host='0.0.0.0' ensures we bind to all interfaces, fixing potential localhost/127.0.0.1 mismatches.
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    # SECURITY: bind to loopback by default; allow override for special dev setups.
+    host = os.environ.get("NEXUS_BIND", "127.0.0.1")
+    app.run(host=host, port=5001, debug=False)
