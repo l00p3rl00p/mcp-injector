@@ -249,6 +249,58 @@ def detect_package_components() -> Dict[str, Dict[str, Any]]:
     return components
 
 
+def _load_inventory_servers() -> Dict[str, Dict[str, Any]]:
+    """
+    Load forged/registered servers from the local Nexus inventory (if present) and
+    return them in the same injectable shape as detect_package_components().
+    """
+    inv_path = get_nexus_home() / "mcp-server-manager" / "inventory.yaml"
+    if not inv_path.exists():
+        return {}
+
+    try:
+        import yaml  # type: ignore
+    except Exception:
+        return {}
+
+    try:
+        data = yaml.safe_load(inv_path.read_text(encoding="utf-8")) or {}
+        servers = data.get("servers", []) or []
+        if not isinstance(servers, list):
+            return {}
+    except Exception:
+        return {}
+
+    out: Dict[str, Dict[str, Any]] = {}
+    for s in servers:
+        try:
+            s_id = str(s.get("id") or s.get("name") or "").strip()
+            run = s.get("run") or {}
+            start_cmd = str(run.get("start_cmd") or "").strip()
+            if not s_id or not start_cmd:
+                continue
+
+            argv = shlex.split(start_cmd)
+            if not argv:
+                continue
+
+            # Guardrails: only include obvious stdio MCP servers (python entrypoints).
+            is_python = Path(argv[0]).name in ("python", "python3") or Path(argv[0]).name.startswith("python")
+            looks_stdio = ("mcp_server.py" in argv) or ("--server" in argv) or ("-m" in argv)
+            if not (is_python and looks_stdio):
+                continue
+
+            out[s_id] = {
+                "command": argv[0],
+                "args": argv[1:],
+                "source": f"inventory:{inv_path}"
+            }
+        except Exception:
+            continue
+
+    return out
+
+
 class MCPInjector:
     def __init__(self, config_path: Path):
         self.config_path = config_path.expanduser()
@@ -500,7 +552,8 @@ def interactive_add(injector: MCPInjector):
     """Interactive mode for adding a server"""
     print("\n🔧 Add MCP Server (Interactive Mode)\n")
     
-    components = detect_package_components()
+    suite_components = detect_package_components()
+    inventory_components = _load_inventory_servers()
     has_npx = bool(shutil.which("npx"))
 
     # Menu options are intentionally "truthy":
@@ -508,30 +561,39 @@ def interactive_add(injector: MCPInjector):
     # - npx items are templates (not detected) and only shown if npx exists.
     menu: Dict[str, tuple] = {}
     idx = 1
-    if components:
+    if suite_components:
         menu[str(idx)] = ("nexus-detected", None, None)
+        idx += 1
+    if inventory_components:
+        menu[str(idx)] = ("inventory-detected", None, None)
         idx += 1
     if has_npx:
         menu[str(idx)] = ("agent-browser", "npx", ["-y", "@vercel/agent-browser", "mcp"])
         idx += 1
         menu[str(idx)] = ("aistudio", "npx", ["-y", "aistudio-mcp-server"])
         idx += 1
-        menu[str(idx)] = ("notebooklm", "npx", ["-y", "notebooklm-mcp-cli"])
+        # NOTE: npx template; keep distinct to avoid overwriting an inventory server named "notebooklm".
+        menu[str(idx)] = ("notebooklm-npx", "npx", ["-y", "notebooklm-mcp-cli"])
         idx += 1
     menu[str(idx)] = ("custom", None, None)
     
     print("Choices:")
-    if components:
-        print(f"  1. MCP Nexus Suite (internal stdio servers)")
+    current = 1
+    if suite_components:
+        print(f"  {current}. MCP Nexus Suite (internal stdio servers)")
+        current += 1
+    if inventory_components:
+        print(f"  {current}. Nexus Inventory (forged/registered servers)")
+        current += 1
     if has_npx:
-        base = 2 if components else 1
+        base = current
         print("\nTemplates (requires Node.js + npx; not auto-detected):")
         print(f"  {base}. Agent Browser (Vercel)")
         print(f"  {base + 1}. AI Studio (Google)")
-        print(f"  {base + 2}. NotebookLM")
+        print(f"  {base + 2}. NotebookLM (npx template)")
         idx_custom = base + 3
     else:
-        idx_custom = 2 if components else 1
+        idx_custom = current
     print(f"\n  {idx_custom}. Custom (manual entry)")
     
     choice = input("\nSelect choice number (or 'custom' / 'nexus', Enter to cancel): ").strip().lower()
@@ -551,6 +613,11 @@ def interactive_add(injector: MCPInjector):
             if name == "nexus-detected":
                 choice = k
                 break
+    if choice in {"i", "inv", "inventory"}:
+        for k, (name, _cmd, _args) in menu.items():
+            if name == "inventory-detected":
+                choice = k
+                break
     
     if choice not in menu:
         print("❌ Invalid choice")
@@ -560,7 +627,7 @@ def interactive_add(injector: MCPInjector):
     
     if preset_name == "nexus-detected":
         # Suite-detected MCP stdio servers (stdio JSON-RPC on stdout)
-        ordered = sorted(components.items(), key=lambda kv: kv[0])
+        ordered = sorted(suite_components.items(), key=lambda kv: kv[0])
         print("\n📦 Detected Nexus MCP stdio servers:")
         for idx, (comp_name, comp) in enumerate(ordered, start=1):
             cmd = comp.get("command")
@@ -585,6 +652,34 @@ def interactive_add(injector: MCPInjector):
         command = str(comp["command"])
         args = list(comp.get("args", []))
         print(f"\n📦 Using suite server: {name}")
+        print(f"   Command: {command} {' '.join(args)}".strip())
+
+    elif preset_name == "inventory-detected":
+        ordered = sorted(inventory_components.items(), key=lambda kv: kv[0])
+        print("\n🗃️  Detected Nexus inventory servers (forged/registered):")
+        for idx, (comp_name, comp) in enumerate(ordered, start=1):
+            cmd = comp.get("command")
+            args = comp.get("args", [])
+            printable = f"{cmd} {' '.join(args)}".strip()
+            print(f"  {idx}) {comp_name}: {printable}")
+
+        raw = input("\nSelect server number (or Enter to cancel): ").strip()
+        if not raw:
+            print("❌ Cancelled")
+            sys.exit(0)
+        try:
+            n = int(raw)
+        except Exception:
+            print("❌ Invalid choice")
+            sys.exit(1)
+        if n < 1 or n > len(ordered):
+            print("❌ Invalid choice")
+            sys.exit(1)
+
+        name, comp = ordered[n - 1]
+        command = str(comp["command"])
+        args = list(comp.get("args", []))
+        print(f"\n🗃️  Using inventory server: {name}")
         print(f"   Command: {command} {' '.join(args)}".strip())
 
     elif preset_name == "custom":
