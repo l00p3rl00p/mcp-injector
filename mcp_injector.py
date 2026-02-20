@@ -28,7 +28,7 @@ try:
 except ImportError:
     session_logger = None
 
-__version__ = "3.3.0"
+__version__ = "3.3.1"
 
 # Best-practice guardrails: these Nexus binaries are CLIs, not MCP servers over stdio.
 # Injecting them into MCP clients (Claude/Codex/etc.) will cause JSON parse errors.

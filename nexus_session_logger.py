@@ -13,7 +13,11 @@ class NexusSessionLogger:
     def __init__(self, log_name: str = "session.jsonl", max_size_mb: int = 5):
         self.log_path = Path.home() / ".mcpinv" / log_name
         self.max_size = max_size_mb * 1024 * 1024
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            # Logging must never block core injector operations in restricted environments.
+            pass
         
     def _rotate_if_needed(self):
         if self.log_path.exists() and self.log_path.stat().st_size > self.max_size:
@@ -27,7 +31,10 @@ class NexusSessionLogger:
         Log an entry to the session timeline.
         Levels: INFO, THINKING, ERROR, COMMAND
         """
-        self._rotate_if_needed()
+        try:
+            self._rotate_if_needed()
+        except Exception:
+            return
         
         entry = {
             "timestamp": time.time(),
@@ -38,8 +45,11 @@ class NexusSessionLogger:
             "metadata": metadata or {}
         }
         
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
+        try:
+            with open(self.log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry) + "\n")
+        except Exception:
+            return
 
     def log_thinking(self, state: str, reason: Optional[str] = None):
         """Log agent's internal reasoning posture."""

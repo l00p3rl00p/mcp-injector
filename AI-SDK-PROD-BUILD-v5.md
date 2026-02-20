@@ -48,3 +48,12 @@
 - [x] "Start" button triggers actual backend process (pid created).
 - [x] Librarian tab shows indexed artifacts (or empty state if none, but *connected*).
 - [x] Command Log updates in real-time.
+
+---
+
+## Doctor (Must Run)
+
+This build’s Doctor is executed from the project root to validate injector + inventory surfaces:
+
+- `python3 -m unittest /Users/almowplay/Developer/Github/mcp-creater-manager/mcp-server-manager/tests/test_cli_smoke.py`
+- `python3 -m unittest /Users/almowplay/Developer/Github/mcp-creater-manager/mcp-server-manager/tests/test_commands_flags_exist.py`

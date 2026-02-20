@@ -2,7 +2,7 @@
 
 **The Precision Configuration Tool for the Workforce Nexus.**
 
-The **Surgeon** (`mcp-injector`) is responsible for the delicate task of modifying IDE configuration files to "inject" MCP servers. In v3.2.1, it is fully integrated into the **True Start** protocol for seamless onboarding.
+The **Surgeon** (`mcp-injector`) is responsible for the delicate task of modifying IDE configuration files to "inject" MCP servers. In v3.3.1, it is integrated into the suite workflow for seamless onboarding.
 
 ## 🚀 Quick Start (Suite Mode)
 
@@ -13,12 +13,12 @@ The Surgeon is automatically triggered during the master setup:
 
 **Standalone Interactive Config:**
 ```bash
-python3 mcp_injector_install.sh
+bash mcp_injector_install.sh
 ```
 
 ---
 
-## 🌟 Capabilities (v3.2.1)
+## 🌟 Capabilities (v3.3.1)
 
 ### 1. Multi-Client Auto-Detection
 Natively understands the configuration formats and locations for:
@@ -48,5 +48,5 @@ Natively understands the configuration formats and locations for:
 ---
 
 ## 📝 Metadata
-* **Status**: Production Ready (v3.2.1)
+* **Status**: Production Ready (v3.3.1)
 * **Part of**: The Workforce Nexus Suite

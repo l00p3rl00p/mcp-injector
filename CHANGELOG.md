@@ -1,5 +1,10 @@
 # Changelog - MCP Surgeon (mcp-injector)
 
+## [3.3.1] - 2026-02-20
+
+### Changed
+- **Suite Version Sync**: Aligned component and docs to Nexus `v3.3.1`.
+
 ## [3.2.1] - 2026-02-19
 
 ### Improvements
@@ -33,4 +38,4 @@
 - Surgical rollback capabilities.
 
 ---
-*Status: Production Ready (v3.2.1)*
+*Status: Production Ready (v3.3.1)*
