@@ -990,7 +990,7 @@ Commands (what they do):
 
 Examples:
   # Interactive mode (recommended)
-  python mcp_injector.py --config ~/Library/Application\ Support/Claude/claude_desktop_config.json --add
+  python mcp_injector.py --config "~/Library/Application Support/Claude/claude_desktop_config.json" --add
   
   # Quick add using a known client name
   python mcp_injector.py --client claude --add
