@@ -995,6 +995,9 @@ Examples:
   # Quick add using a known client name
   python mcp_injector.py --client claude --add
   
+  # Non-interactive add with args that start with '-' (recommended form)
+  python mcp_injector.py --client claude --add --name notebooklm-npx --command npx --args -y notebooklm-mcp-cli
+  
   # List all servers in a config
   python mcp_injector.py --client claude --list
   
@@ -1011,7 +1014,9 @@ Examples:
     parser.add_argument("--add", action="store_true", help="Add a new server (interactive)")
     parser.add_argument("--name", help="Server name (for non-interactive --add)")
     parser.add_argument("--command", help="Command to run (for non-interactive --add)")
-    parser.add_argument("--args", nargs='+', help="Arguments for command (for non-interactive --add)")
+    # Important: accept args that start with '-' (e.g. `npx -y ...`).
+    # Using REMAINDER prevents argparse from treating '-y' as a top-level flag.
+    parser.add_argument("--args", nargs=argparse.REMAINDER, help="Arguments for command (for non-interactive --add)")
     
     parser.add_argument("--remove", metavar="NAME", help="Remove a server by name")
     parser.add_argument("--list", action="store_true", help="List all configured servers")
@@ -1093,6 +1098,9 @@ Examples:
         if args.name and args.command:
             # Non-interactive Mode
             cmd_args = args.args or []
+            # If a user included an explicit "--" separator, treat it as "end of options" and drop it.
+            if cmd_args and cmd_args[0] == "--":
+                cmd_args = cmd_args[1:]
             injector.add_server(args.name, args.command, cmd_args)
         else:
             # Interactive Mode
