@@ -399,18 +399,6 @@ class MCPInjector:
         """
         Save config with structural auditing, backup, and atomic write.
         """
-        # Legacy cleanup: remove deprecated dev markers if present.
-        # This avoids leaking old dev artifacts into MCP client configs.
-        try:
-            servers = config.get("mcpServers")
-            if isinstance(servers, dict):
-                for _name, cfg in servers.items():
-                    if isinstance(cfg, dict) and "_shesha_managed" in cfg:
-                        cfg.pop("_shesha_managed", None)
-        except Exception:
-            # Never block writing due to cleanup.
-            pass
-
         # 0. Validation (Tiered)
         if self.config_path.exists():
             try:
@@ -775,111 +763,6 @@ def list_known_clients():
         print(f"   {path}")
         print()
 
-
-def _sanitize_legacy_markers_in_servers(servers: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, int]]:
-    """
-    Remove legacy dev artifacts from an `mcpServers` mapping (deprecated keys).
-    - Deletes `_shesha_managed` keys from server configs (deprecated).
-    Returns: (new_servers, stats)
-    """
-    removed_markers = 0
-    new_servers: Dict[str, Any] = {}
-
-    for name, cfg in (servers or {}).items():
-        if isinstance(cfg, dict) and "_shesha_managed" in cfg:
-            cfg = dict(cfg)
-            cfg.pop("_shesha_managed", None)
-            removed_markers += 1
-        new_servers[name] = cfg
-
-    return new_servers, {"removed_markers": removed_markers}
-
-
-def sanitize_legacy_markers_for_clients(*, clients: Optional[List[str]] = None, json_mode: bool = False) -> int:
-    """
-    Sanitize legacy dev artifacts across MCP client configs:
-    - Remove deprecated marker keys (e.g. `_shesha_managed`).
-    """
-    detected = detect_installed_clients()
-    if clients:
-        client_set = set(clients)
-        detected = {k: v for k, v in detected.items() if k in client_set}
-
-    results: Dict[str, Any] = {"updated": [], "skipped": [], "errors": []}
-    for client, info in detected.items():
-        cfg_path = Path(str(info.get("config_path"))).expanduser()
-        try:
-            if not cfg_path.exists():
-                results["skipped"].append({"client": client, "config": str(cfg_path), "reason": "config_missing"})
-                continue
-            injector = MCPInjector(cfg_path)
-            config = injector.load_config()
-            servers = config.get("mcpServers", {})
-            if not isinstance(servers, dict):
-                results["skipped"].append({"client": client, "config": str(cfg_path), "reason": "mcpServers_not_object"})
-                continue
-
-            new_servers, stats = _sanitize_legacy_markers_in_servers(servers)
-            if new_servers == servers:
-                results["skipped"].append({"client": client, "config": str(cfg_path), "reason": "no_changes"})
-                continue
-
-            config["mcpServers"] = new_servers
-            injector.save_config(config)
-            results["updated"].append({"client": client, "config": str(cfg_path), **stats})
-        except Exception as e:
-            results["errors"].append({"client": client, "config": str(cfg_path), "error": str(e)})
-
-    if json_mode:
-        print(json.dumps(results, indent=2))
-    else:
-        print("Sanitize legacy dev markers")
-        for item in results["updated"]:
-            print(f"✅ {item['client']}: removed_markers={item['removed_markers']} ({item['config']})")
-        for item in results["skipped"]:
-            print(f"↪️  {item['client']}: {item['reason']} ({item['config']})")
-        for item in results["errors"]:
-            print(f"❌ {item['client']}: {item['error']} ({item['config']})")
-
-    return 1 if results["errors"] else 0
-
-
-def sanitize_legacy_markers_for_config(config_path: Path, *, json_mode: bool = False) -> int:
-    """
-    Sanitize legacy dev artifacts for a single explicit config path.
-    """
-    results: Dict[str, Any] = {"config": str(config_path), "updated": False, "removed_markers": 0, "error": None}
-    try:
-        injector = MCPInjector(config_path)
-        config = injector.load_config()
-        servers = config.get("mcpServers", {})
-        if not isinstance(servers, dict):
-            raise TypeError("mcpServers is not an object")
-
-        new_servers, stats = _sanitize_legacy_markers_in_servers(servers)
-        results["removed_markers"] = stats["removed_markers"]
-        if new_servers != servers:
-            config["mcpServers"] = new_servers
-            injector.save_config(config)
-            results["updated"] = True
-    except Exception as e:
-        results["error"] = str(e)
-        if json_mode:
-            print(json.dumps(results, indent=2))
-        else:
-            print(f"❌ sanitize-legacy-markers failed: {e}")
-        return 1
-
-    if json_mode:
-        print(json.dumps(results, indent=2))
-    else:
-        if results["updated"]:
-            print(f"✅ sanitized: removed_markers={results['removed_markers']} ({results['config']})")
-        else:
-            print(f"↪️  no changes ({results['config']})")
-    return 0
-
-
 def startup_auto_detect_prompt():
     if not sys.stdin.isatty():
         return
@@ -1108,8 +991,6 @@ Commands (what they do):
   mcp-surgeon --client claude --add   Add a server entry to Claude (interactive)
   mcp-surgeon --client claude --remove <name>
                                      Remove one server entry by name
-  mcp-surgeon --sanitize-legacy-markers
-                                     Remove legacy dev markers across IDE configs
 
 Examples:
   # Interactive mode (recommended)
@@ -1129,9 +1010,6 @@ Examples:
   
   # Show known client locations
   python mcp_injector.py --list-clients
-
-  # Remove legacy dev markers across all detected IDE configs
-  python mcp_injector.py --sanitize-legacy-markers
         """
     )
     
@@ -1149,8 +1027,6 @@ Examples:
     parser.add_argument('--list-clients', action='store_true', help="List all known client locations")
     parser.add_argument('--json', action='store_true', help="Output in raw JSON format for agent-side processing")
     parser.add_argument("--bootstrap", action="store_true", help="Bootstrap the Git-Packager workspace (fetch missing components)")
-    parser.add_argument("--sanitize-legacy-markers", action="store_true", help="Remove legacy dev markers from detected IDE configs")
-    parser.add_argument("--sanitize-clients", nargs="+", choices=get_known_clients().keys(), help="Limit sanitization to specific clients")
     
     parser.add_argument("--startup-detect", action="store_true", help="Auto-detect installed clients and prompt for injection")
     parser.add_argument("--forge-target", type=Path, help="Inject a specific forged server path")
@@ -1190,13 +1066,6 @@ Examples:
     if args.startup_detect:
         startup_auto_detect_prompt()
         return
-
-    if args.sanitize_legacy_markers:
-        # If an explicit config was provided, sanitize only that file (frictionless / deterministic).
-        if args.config:
-            sys.exit(sanitize_legacy_markers_for_config(args.config, json_mode=args.json))
-        # Otherwise sanitize across detected clients (best-effort).
-        sys.exit(sanitize_legacy_markers_for_clients(clients=args.sanitize_clients, json_mode=args.json))
 
     # Determine config path
     if args.client:
