@@ -399,7 +399,7 @@ class MCPInjector:
         """
         Save config with structural auditing, backup, and atomic write.
         """
-        # Legacy cleanup: remove deprecated shesha markers if present.
+        # Legacy cleanup: remove deprecated dev markers if present.
         # This avoids leaking old dev artifacts into MCP client configs.
         try:
             servers = config.get("mcpServers")
@@ -776,9 +776,9 @@ def list_known_clients():
         print()
 
 
-def _sanitize_shesha_markers_in_servers(servers: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, int]]:
+def _sanitize_legacy_markers_in_servers(servers: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, int]]:
     """
-    Remove legacy dev artifacts from an `mcpServers` mapping.
+    Remove legacy dev artifacts from an `mcpServers` mapping (deprecated keys).
     - Deletes `_shesha_managed` keys from server configs (deprecated).
     Returns: (new_servers, stats)
     """
@@ -795,10 +795,10 @@ def _sanitize_shesha_markers_in_servers(servers: Dict[str, Any]) -> tuple[Dict[s
     return new_servers, {"removed_markers": removed_markers}
 
 
-def sanitize_shesha_for_clients(*, clients: Optional[List[str]] = None, json_mode: bool = False) -> int:
+def sanitize_legacy_markers_for_clients(*, clients: Optional[List[str]] = None, json_mode: bool = False) -> int:
     """
-    Sanitize legacy 'shesha' artifacts across MCP client configs:
-    - Remove `_shesha_managed` marker keys.
+    Sanitize legacy dev artifacts across MCP client configs:
+    - Remove deprecated marker keys (e.g. `_shesha_managed`).
     """
     detected = detect_installed_clients()
     if clients:
@@ -819,7 +819,7 @@ def sanitize_shesha_for_clients(*, clients: Optional[List[str]] = None, json_mod
                 results["skipped"].append({"client": client, "config": str(cfg_path), "reason": "mcpServers_not_object"})
                 continue
 
-            new_servers, stats = _sanitize_shesha_markers_in_servers(servers)
+            new_servers, stats = _sanitize_legacy_markers_in_servers(servers)
             if new_servers == servers:
                 results["skipped"].append({"client": client, "config": str(cfg_path), "reason": "no_changes"})
                 continue
@@ -844,9 +844,9 @@ def sanitize_shesha_for_clients(*, clients: Optional[List[str]] = None, json_mod
     return 1 if results["errors"] else 0
 
 
-def sanitize_shesha_for_config(config_path: Path, *, json_mode: bool = False) -> int:
+def sanitize_legacy_markers_for_config(config_path: Path, *, json_mode: bool = False) -> int:
     """
-    Sanitize legacy 'shesha' artifacts for a single explicit config path.
+    Sanitize legacy dev artifacts for a single explicit config path.
     """
     results: Dict[str, Any] = {"config": str(config_path), "updated": False, "removed_markers": 0, "error": None}
     try:
@@ -856,7 +856,7 @@ def sanitize_shesha_for_config(config_path: Path, *, json_mode: bool = False) ->
         if not isinstance(servers, dict):
             raise TypeError("mcpServers is not an object")
 
-        new_servers, stats = _sanitize_shesha_markers_in_servers(servers)
+        new_servers, stats = _sanitize_legacy_markers_in_servers(servers)
         results["removed_markers"] = stats["removed_markers"]
         if new_servers != servers:
             config["mcpServers"] = new_servers
@@ -867,7 +867,7 @@ def sanitize_shesha_for_config(config_path: Path, *, json_mode: bool = False) ->
         if json_mode:
             print(json.dumps(results, indent=2))
         else:
-            print(f"❌ sanitize-shesha failed: {e}")
+            print(f"❌ sanitize-legacy-markers failed: {e}")
         return 1
 
     if json_mode:
@@ -1108,7 +1108,8 @@ Commands (what they do):
   mcp-surgeon --client claude --add   Add a server entry to Claude (interactive)
   mcp-surgeon --client claude --remove <name>
                                      Remove one server entry by name
-  mcp-surgeon --sanitize-shesha       Remove legacy 'shesha' markers across IDE configs
+  mcp-surgeon --sanitize-legacy-markers
+                                     Remove legacy dev markers across IDE configs
 
 Examples:
   # Interactive mode (recommended)
@@ -1129,8 +1130,8 @@ Examples:
   # Show known client locations
   python mcp_injector.py --list-clients
 
-  # Remove legacy shesha markers across all detected IDE configs
-  python mcp_injector.py --sanitize-shesha
+  # Remove legacy dev markers across all detected IDE configs
+  python mcp_injector.py --sanitize-legacy-markers
         """
     )
     
@@ -1148,7 +1149,7 @@ Examples:
     parser.add_argument('--list-clients', action='store_true', help="List all known client locations")
     parser.add_argument('--json', action='store_true', help="Output in raw JSON format for agent-side processing")
     parser.add_argument("--bootstrap", action="store_true", help="Bootstrap the Git-Packager workspace (fetch missing components)")
-    parser.add_argument("--sanitize-shesha", action="store_true", help="Remove legacy 'shesha' markers from detected IDE configs")
+    parser.add_argument("--sanitize-legacy-markers", action="store_true", help="Remove legacy dev markers from detected IDE configs")
     parser.add_argument("--sanitize-clients", nargs="+", choices=get_known_clients().keys(), help="Limit sanitization to specific clients")
     
     parser.add_argument("--startup-detect", action="store_true", help="Auto-detect installed clients and prompt for injection")
@@ -1190,12 +1191,12 @@ Examples:
         startup_auto_detect_prompt()
         return
 
-    if args.sanitize_shesha:
+    if args.sanitize_legacy_markers:
         # If an explicit config was provided, sanitize only that file (frictionless / deterministic).
         if args.config:
-            sys.exit(sanitize_shesha_for_config(args.config, json_mode=args.json))
+            sys.exit(sanitize_legacy_markers_for_config(args.config, json_mode=args.json))
         # Otherwise sanitize across detected clients (best-effort).
-        sys.exit(sanitize_shesha_for_clients(clients=args.sanitize_clients, json_mode=args.json))
+        sys.exit(sanitize_legacy_markers_for_clients(clients=args.sanitize_clients, json_mode=args.json))
 
     # Determine config path
     if args.client:
