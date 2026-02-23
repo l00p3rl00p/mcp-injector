@@ -997,7 +997,7 @@ Examples:
   python mcp_injector.py --client claude --add
   
   # Non-interactive add with args that start with '-' (recommended form)
-  python mcp_injector.py --client claude --add --name notebooklm-npx --command npx --args -y notebooklm-mcp-cli
+  python mcp_injector.py --client claude --add --name notebooklm-npx --command npx --args -y github:jacob-bd/notebooklm-mcp-cli
   
   # List all servers in a config
   python mcp_injector.py --client claude --list
