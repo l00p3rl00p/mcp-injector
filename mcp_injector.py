@@ -399,6 +399,18 @@ class MCPInjector:
         """
         Save config with structural auditing, backup, and atomic write.
         """
+        # Legacy cleanup: remove deprecated shesha markers if present.
+        # This avoids leaking old dev artifacts into MCP client configs.
+        try:
+            servers = config.get("mcpServers")
+            if isinstance(servers, dict):
+                for _name, cfg in servers.items():
+                    if isinstance(cfg, dict) and "_shesha_managed" in cfg:
+                        cfg.pop("_shesha_managed", None)
+        except Exception:
+            # Never block writing due to cleanup.
+            pass
+
         # 0. Validation (Tiered)
         if self.config_path.exists():
             try:
@@ -488,8 +500,12 @@ class MCPInjector:
         if env:
             server_config["env"] = env
         
-        # Add marker for tracking
-        server_config["_shesha_managed"] = True
+        # Add marker for tracking (current canonical marker; do not write legacy keys).
+        server_config["_nexus_managed"] = {
+            "managed": True,
+            "suite": "workforce-nexus",
+            "tool": "mcp-injector",
+        }
         
         # Inject
         config["mcpServers"][name] = server_config
@@ -535,7 +551,7 @@ class MCPInjector:
         
         print(f"\n📋 Configured MCP Servers ({len(servers)}):\n")
         for name, cfg in servers.items():
-            managed = "🔧 " if cfg.get("_shesha_managed") else "   "
+            managed = "🔧 " if isinstance(cfg, dict) and cfg.get("_nexus_managed") else "   "
             print(f"{managed}{name}")
             print(f"   Command: {cfg['command']} {' '.join(cfg.get('args', []))}")
             if cfg.get('env'):
@@ -762,39 +778,27 @@ def list_known_clients():
 
 def _sanitize_shesha_markers_in_servers(servers: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, int]]:
     """
-    Remove any legacy 'shesha' artifacts from an `mcpServers` mapping.
-    - Deletes `_shesha_managed` keys from server configs.
-    - Removes any server entries whose *name* contains 'shesha' (case-insensitive).
+    Remove legacy dev artifacts from an `mcpServers` mapping.
+    - Deletes `_shesha_managed` keys from server configs (deprecated).
     Returns: (new_servers, stats)
     """
-    removed_entries = 0
     removed_markers = 0
     new_servers: Dict[str, Any] = {}
 
     for name, cfg in (servers or {}).items():
-        try:
-            name_str = str(name)
-        except Exception:
-            name_str = ""
-
-        if "shesha" in name_str.lower():
-            removed_entries += 1
-            continue
-
         if isinstance(cfg, dict) and "_shesha_managed" in cfg:
             cfg = dict(cfg)
             cfg.pop("_shesha_managed", None)
             removed_markers += 1
         new_servers[name] = cfg
 
-    return new_servers, {"removed_entries": removed_entries, "removed_markers": removed_markers}
+    return new_servers, {"removed_markers": removed_markers}
 
 
 def sanitize_shesha_for_clients(*, clients: Optional[List[str]] = None, json_mode: bool = False) -> int:
     """
     Sanitize legacy 'shesha' artifacts across MCP client configs:
     - Remove `_shesha_managed` marker keys.
-    - Remove any server entry whose name contains 'shesha'.
     """
     detected = detect_installed_clients()
     if clients:
@@ -829,9 +833,9 @@ def sanitize_shesha_for_clients(*, clients: Optional[List[str]] = None, json_mod
     if json_mode:
         print(json.dumps(results, indent=2))
     else:
-        print("Sanitize legacy 'shesha' markers")
+        print("Sanitize legacy dev markers")
         for item in results["updated"]:
-            print(f"✅ {item['client']}: removed_entries={item['removed_entries']} removed_markers={item['removed_markers']} ({item['config']})")
+            print(f"✅ {item['client']}: removed_markers={item['removed_markers']} ({item['config']})")
         for item in results["skipped"]:
             print(f"↪️  {item['client']}: {item['reason']} ({item['config']})")
         for item in results["errors"]:
@@ -844,7 +848,7 @@ def sanitize_shesha_for_config(config_path: Path, *, json_mode: bool = False) ->
     """
     Sanitize legacy 'shesha' artifacts for a single explicit config path.
     """
-    results: Dict[str, Any] = {"config": str(config_path), "updated": False, "removed_entries": 0, "removed_markers": 0, "error": None}
+    results: Dict[str, Any] = {"config": str(config_path), "updated": False, "removed_markers": 0, "error": None}
     try:
         injector = MCPInjector(config_path)
         config = injector.load_config()
@@ -853,7 +857,6 @@ def sanitize_shesha_for_config(config_path: Path, *, json_mode: bool = False) ->
             raise TypeError("mcpServers is not an object")
 
         new_servers, stats = _sanitize_shesha_markers_in_servers(servers)
-        results["removed_entries"] = stats["removed_entries"]
         results["removed_markers"] = stats["removed_markers"]
         if new_servers != servers:
             config["mcpServers"] = new_servers
@@ -871,7 +874,7 @@ def sanitize_shesha_for_config(config_path: Path, *, json_mode: bool = False) ->
         print(json.dumps(results, indent=2))
     else:
         if results["updated"]:
-            print(f"✅ sanitized: removed_entries={results['removed_entries']} removed_markers={results['removed_markers']} ({results['config']})")
+            print(f"✅ sanitized: removed_markers={results['removed_markers']} ({results['config']})")
         else:
             print(f"↪️  no changes ({results['config']})")
     return 0
@@ -1024,7 +1027,7 @@ def list_all_clients_servers(*, allow_prompt_removal: bool = True) -> None:
                 continue
             cmd = server_cfg.get("command", "")
             args = server_cfg.get("args", [])
-            managed = bool(server_cfg.get("_shesha_managed") is True)
+            managed = bool(server_cfg.get("_nexus_managed"))
             entries.append(
                 {
                     "idx": idx,
@@ -1086,7 +1089,7 @@ def list_all_clients_servers(*, allow_prompt_removal: bool = True) -> None:
         injector = MCPInjector(config_path)
         for e in group:
             if not e["managed"]:
-                warn = input(f"'{e['name']}' in {e['client']} is not marked _shesha_managed. Remove anyway? [y/N]: ").strip().lower()
+                warn = input(f"'{e['name']}' in {e['client']} is not marked _nexus_managed. Remove anyway? [y/N]: ").strip().lower()
                 if warn != "y":
                     continue
             injector.remove_server(e["name"])
