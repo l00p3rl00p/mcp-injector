@@ -1,0 +1,30 @@
+{
+  "recipes": {
+    "notebooklm-npx-github": {
+      "added": "2026-02-23",
+      "label": "NotebookLM MCP (npx via GitHub)",
+      "command": "npx",
+      "args": ["-y", "github:jacob-bd/notebooklm-mcp-cli"]
+    }
+  },
+  "templates": {
+    "agent-browser-npx": {
+      "added": "2026-02-23",
+      "label": "Agent Browser (Vercel)",
+      "command": "npx",
+      "args": ["-y", "@vercel/agent-browser", "mcp"]
+    },
+    "aistudio-npx": {
+      "added": "2026-02-23",
+      "label": "AI Studio (Google)",
+      "command": "npx",
+      "args": ["-y", "aistudio-mcp-server"]
+    },
+    "notebooklm-npx": {
+      "added": "2026-02-23",
+      "label": "NotebookLM MCP (npx via GitHub)",
+      "command": "npx",
+      "args": ["-y", "github:jacob-bd/notebooklm-mcp-cli"]
+    }
+  }
+}
