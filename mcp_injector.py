@@ -572,8 +572,9 @@ def interactive_add(injector: MCPInjector):
         idx += 1
         menu[str(idx)] = ("aistudio", "npx", ["-y", "aistudio-mcp-server"])
         idx += 1
-        # NOTE: npx template; keep distinct to avoid overwriting an inventory server named "notebooklm".
-        menu[str(idx)] = ("notebooklm-npx", "npx", ["-y", "notebooklm-mcp-cli"])
+        # NOTE: This is a repo-backed npx template (not an npm registry package).
+        # Keep distinct to avoid overwriting an inventory server named "notebooklm".
+        menu[str(idx)] = ("notebooklm-npx", "npx", ["-y", "github:jacob-bd/notebooklm-mcp-cli"])
         idx += 1
     menu[str(idx)] = ("custom", None, None)
     
@@ -590,7 +591,7 @@ def interactive_add(injector: MCPInjector):
         print("\nTemplates (requires Node.js + npx; not auto-detected):")
         print(f"  {base}. Agent Browser (Vercel)")
         print(f"  {base + 1}. AI Studio (Google)")
-        print(f"  {base + 2}. NotebookLM (npx template)")
+        print(f"  {base + 2}. NotebookLM (npx from GitHub)")
         idx_custom = base + 3
     else:
         idx_custom = current
