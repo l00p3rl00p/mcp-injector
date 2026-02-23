@@ -538,6 +538,22 @@ class MCPInjector:
     def __init__(self, config_path: Path):
         self.config_path = config_path.expanduser()
         self.backup_path = self.config_path.with_suffix('.json.backup')
+
+    @staticmethod
+    def _sanitize_loaded_config(config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Remove deprecated/legacy keys that should not persist across rewrites.
+        This is intentionally narrow to avoid deleting user data.
+        """
+        servers = config.get("mcpServers")
+        if not isinstance(servers, dict):
+            return config
+        for _name, cfg in servers.items():
+            if not isinstance(cfg, dict):
+                continue
+            # Legacy dev artifact (must not persist).
+            cfg.pop("_shesha_managed", None)
+        return config
     
     def load_config(self) -> Dict[str, Any]:
         """Load existing config or create empty structure"""
@@ -561,8 +577,8 @@ class MCPInjector:
             # Ensure mcpServers key exists
             if "mcpServers" not in config:
                 config["mcpServers"] = {}
-            
-            return config
+
+            return self._sanitize_loaded_config(config)
         except json.JSONDecodeError as e:
             print(f"❌ Invalid JSON in {self.config_path}")
             print(f"   Error: {e}")
