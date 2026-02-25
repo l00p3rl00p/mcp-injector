@@ -73,7 +73,6 @@ $ cat ~/.config/aistudio/mcp_servers.json
 }
 ```
 
-Note: legacy metadata keys like `_shesha_managed` are stripped when configs are rewritten.
 
 **Verification Date**: 2026-02-17  
 **Status**: ✅ COMPLETE - All units delivered and interconnected
