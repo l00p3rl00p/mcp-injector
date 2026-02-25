@@ -551,8 +551,7 @@ class MCPInjector:
         for _name, cfg in servers.items():
             if not isinstance(cfg, dict):
                 continue
-            # Legacy dev artifact (must not persist).
-            cfg.pop("_shesha_managed", None)
+
         return config
     
     def load_config(self) -> Dict[str, Any]:
