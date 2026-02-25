@@ -28,7 +28,7 @@ try:
 except ImportError:
     session_logger = None
 
-__version__ = "3.3.1"
+__version__ = "3.3.2"
 
 # Best-practice guardrails: these Nexus binaries are CLIs, not MCP servers over stdio.
 # Injecting them into MCP clients (Claude/Codex/etc.) will cause JSON parse errors.
@@ -455,29 +455,56 @@ def get_nexus_home() -> Path:
 def detect_package_components() -> Dict[str, Dict[str, Any]]:
     """
     Detect Nexus-created executable components and build injectable server configs.
+
+    Returns all verified stdio MCP servers in the Nexus suite:
+      - nexus-librarian    → ~/.mcp-tools/bin/mcp-librarian --server
+      - atp-engine         → python3 <AgentFixes>/agent/atp/mcp_server.py
+      - webmcp-knowledge-server → python3 <webmcp>/mcpbuild/webmcp_server/mcp_server.py
+
+    Only include binaries/scripts that speak MCP JSON-RPC over stdio.
+    CLIs (mcp-activator, mcp-observer, mcp-surgeon) must NOT be injected.
     """
+    home = get_nexus_home().parent  # ~/.mcp-tools/.. == $HOME
+
     nexus_home = get_nexus_home()
     bin_dir = nexus_home / "bin"
 
     components: Dict[str, Dict[str, Any]] = {}
-    if not bin_dir.exists():
-        return components
 
-    # Important: Only include binaries that speak MCP over stdio (JSON-RPC on stdout).
-    # Many Nexus CLIs (e.g. `mcp-activator`, `mcp-observer`, `mcp-surgeon`) are *not*
-    # MCP servers and will cause clients like Claude to throw JSON parse errors if injected.
-    candidates = {
-        "nexus-librarian": ("mcp-librarian", ["--server"]),
-    }
+    # 1. nexus-librarian — binary in ~/.mcp-tools/bin/
+    mcp_librarian = bin_dir / "mcp-librarian"
+    if mcp_librarian.exists():
+        components["nexus-librarian"] = {
+            "command": str(mcp_librarian),
+            "args": ["--server"],
+            "source": "nexus-bin"
+        }
 
-    for server_name, (binary_name, args) in candidates.items():
-        binary_path = bin_dir / binary_name
-        if binary_path.exists():
-            components[server_name] = {
-                "command": str(binary_path),
-                "args": args,
-                "source": "nexus-bin"
+    # 2. atp-engine — Python script in ~/Developer/AgentFixes/agent/atp/
+    atp_candidates = [
+        home / "Developer" / "AgentFixes" / "agent" / "atp" / "mcp_server.py",
+    ]
+    for atp_path in atp_candidates:
+        if atp_path.exists():
+            components["atp-engine"] = {
+                "command": "python3",
+                "args": [str(atp_path)],
+                "source": "agentfixes-local"
             }
+            break
+
+    # 3. webmcp-knowledge-server — Python script in ~/Developer/Github/webmcp/
+    webmcp_candidates = [
+        home / "Developer" / "Github" / "webmcp" / "mcpbuild" / "webmcp_server" / "mcp_server.py",
+    ]
+    for webmcp_path in webmcp_candidates:
+        if webmcp_path.exists():
+            components["webmcp-knowledge-server"] = {
+                "command": "python3",
+                "args": [str(webmcp_path)],
+                "source": "webmcp-local"
+            }
+            break
 
     return components
 
@@ -737,12 +764,10 @@ class MCPInjector:
         if env:
             server_config["env"] = env
         
-        # Add marker for tracking (current canonical marker; do not write legacy keys).
-        server_config["_nexus_managed"] = {
-            "managed": True,
-            "suite": "workforce-nexus",
-            "tool": "mcp-injector",
-        }
+        # NOTE: Do NOT add _nexus_managed or any extra keys to the server entry.
+        # Claude Desktop and most MCP clients only support: command, args, env.
+        # Extra keys are either silently ignored or cause JSON parse errors in some clients.
+        # Tracking is done at the injector level, not inside client config files.
         
         # Inject
         config["mcpServers"][name] = server_config
