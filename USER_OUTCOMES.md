@@ -88,8 +88,8 @@ To fully align with these outcomes, the following enhancements are planned:
 * **Respect Local Code**: Treatment of the current repository state as the "source of truth." Never overwrite local changes with upstream templates.
 
 ---
-### 2026-02-25 Mission Audit Results (v3.3.4 Red Team)
-**Mission Score: 85%** | Anchored to: *"'Just Works' install — zero-leak isolated environments. Surgical IDE configuration — Manual-Free, zero JSON corruption."*
+### 2026-02-25 Mission Audit Results (v3.3.5 Red Team)
+**Mission Score: 91%** | Anchored to: *"'Just Works' install — zero-leak isolated environments. Surgical IDE configuration — Manual-Free, zero JSON corruption."*
 
 | Feature | Status | Confidence |
 |---|---|---|
@@ -99,13 +99,9 @@ To fully align with these outcomes, the following enhancements are planned:
 | Surgical uninstall (removes only what it created) | ✅ | 85% |
 | Isolated venv (zero host env leaks) | ✅ | 88% |
 | `mcp-surgeon --list` shows current injections | ✅ | 80% |
-| Zero JSON corruption on concurrent runs | 🟡 | 72% |
+| **Zero JSON corruption (Concurrent ORT Verified)** | ✅ | 91% |
 | Inject from GUI (not just CLI) | ✅ | 85% |
 
-#### 🟡 GAP-R4 (Open — v48 Backlog)
-> **Claim**: "Zero JSON corruption" — surgical write with no collateral damage, including concurrent access.
-> **Gap**: The atomic write guard exists (single-process safe) but there is **no ORT or multi-process test** covering simultaneous inject calls (e.g., GUI button + CLI trigger arriving within the same write window).
-> **Fix**: Add an ORT that fires two `mcp-surgeon --add` calls simultaneously (via `threading.Thread`) and asserts the IDE config file is valid JSON after both complete. Runtime: < 5s.
-
 ---
-*Status: v3.3.4 Audited — 2026-02-25*
+*Status: v3.3.5 RELEASED — 2026-02-25. GAP-R4 Closed.*
+
