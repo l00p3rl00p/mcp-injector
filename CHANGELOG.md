@@ -38,4 +38,15 @@
 - Surgical rollback capabilities.
 
 ---
-*Status: Production Ready (v3.3.1)*
+
+## [3.3.5] - 2026-02-25
+
+### Added
+- **Concurrent Injection ORT (GAP-R4)**: `tests/test_ort_concurrent_injection.py` — 2 tests, 6 total thread assertions. Proves that simultaneous `MCPInjector.add_server()` calls produce valid JSON (no corruption, no stray `.tmp` files). The atomic `temp_path.replace()` rename-guard holds under POSIX races; one thread retries cleanly when the tmp is already promoted.
+
+### Fixed
+- No source changes — the atomic write was already correct. Test adds the missing evidence.
+
+---
+*Status: Production Ready (v3.3.5)*
+

@@ -361,3 +361,24 @@ $ python3 /Users/almowplay/Developer/Github/mcp-creater-manager/mcp-server-manag
 
 **Verification Date**: 2026-02-18
 **Status**: ✅ COMPLETE
+
+---
+
+### Unit v3.3.5-A: Concurrent Injection ORT (GAP-R4) ✅
+
+**Closed Gap:** GAP-R4 — "No concurrent injection ORT test"
+
+- [x] **`tests/test_ort_concurrent_injection.py`** — 2 test classes, 6 assertions.
+- [x] **`test_concurrent_injection_no_corruption`**: 2 threads inject simultaneously; config is valid JSON with ≥1 server; no `.tmp` stray files.
+- [x] **`test_no_stray_backup_corruption`**: 4 threads race; both main config and `.json.backup` remain valid after all 4 complete.
+- [x] **Race condition documented**: POSIX `rename()` guarantees — one winner, one `ENOENT` retry; Surgeon handles this cleanly.
+
+**Test Evidence** (Executed 2026-02-25):
+```
+test_concurrent_injection_no_corruption ... ok
+test_no_stray_backup_corruption ... ok
+Ran 2 tests in 0.013s — OK
+```
+
+**Verification Date**: 2026-02-25
+**Status**: ✅ COMPLETE — atomic write guard proven under concurrent access
