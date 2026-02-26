@@ -49,7 +49,7 @@ As a user, I want:
 
 ### 5. Resilient Lifecycle
 * **Atomic Rollback**: If an installation fails at any step, the system automatically reverts to a clean state, leaving no partial artifacts.
-* **Safe Upgrades**: The `mcp-activator --sync` command provides a unified update loop, ensuring all central tools stay synchronized with the latest security and feature patches.
+* **Safe Upgrades**: The `mcp-activator --repair` command is the single unified update loop, ensuring all central tools stay synchronized with the latest security and feature patches.
 * **Context-Locked Execution**: Entry points carry their own venv and PYTHONPATH, ensuring they work regardless of the user's active terminal environment.
 
 ---
@@ -60,7 +60,7 @@ To fully align with these outcomes, the following enhancements are planned:
 
 *   **GUI Reliability (Target 95%+)**: Transition GUI from a blocking process to a background service with PID management.
 *   **Librarian Synergy**: Implement a dynamic watcher so the Librarian indexes changes in real-time, not just on installation.
-*   **Operational Awareness**: Add "version health" checks to the GUI dashboard to visually signal when a `--sync` is required.
+*   **Operational Awareness**: Add "version health" checks to the GUI dashboard to visually signal when a `--repair` is required.
 
 ### 2026-02-11 Alignment Update
 * **Injector Startup Detect**: Added startup detection/prompt flow for common IDE clients, including `claude`, `codex`, and `aistudio` (plus `google-antigravity` alias).
