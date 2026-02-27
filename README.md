@@ -47,6 +47,17 @@ Natively understands the configuration formats and locations for:
 
 ---
 
+## 🔄 Drift Lifecycle Integration (v3.3.6+)
+
+The Nexus Injector works in tandem with the Drift Lifecycle system:
+- **Detection**: Monitors injected server configurations for drift
+- **Safe Updates**: Surgical JSON edits prevent configuration corruption
+- **Multi-Target**: Supports core and forged server injections
+
+See main repo: [Drift Lifecycle System](../DRIFT_LIFECYCLE_OUTCOMES.md)
+
+---
+
 ## 📝 Metadata
-* **Status**: Production Ready (v3.3.1)
+* **Status**: Production Ready (v3.3.6)
 * **Part of**: The Workforce Nexus Suite
