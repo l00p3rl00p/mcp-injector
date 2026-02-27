@@ -1410,6 +1410,8 @@ Examples:
     
     parser.add_argument("--startup-detect", action="store_true", help="Auto-detect installed clients and prompt for injection")
     parser.add_argument("--forge-target", type=Path, help="Inject a specific forged server path")
+    parser.add_argument("--defer", action="store_true",
+        help="Save server config to inventory without injecting into IDEs. Run --inject <name> to push later.")
     args = parser.parse_args()
     
     if args.forge_target:
@@ -1489,7 +1491,32 @@ Examples:
             # If a user included an explicit "--" separator, treat it as "end of options" and drop it.
             if cmd_args and cmd_args[0] == "--":
                 cmd_args = cmd_args[1:]
-            injector.add_server(args.name, args.command, cmd_args)
+            if args.defer:
+                # Deferred mode: write to Nexus inventory only — do not touch IDE configs.
+                inv_path = get_nexus_home() / "mcp-server-manager" / "inventory.yaml"
+                inv_path.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    import yaml as _yaml
+                    inventory = _yaml.safe_load(inv_path.read_text()) if inv_path.exists() else {}
+                    inventory = inventory or {}
+                    servers = inventory.setdefault("servers", [])
+                    existing = next((s for s in servers if s.get("id") == args.name), None)
+                    entry = {
+                        "id": args.name, "name": args.name,
+                        "run": {"start_cmd": f"{args.command} {' '.join(cmd_args)}".strip()},
+                        "type": "deferred", "status": "pending-injection",
+                    }
+                    if existing:
+                        existing.update(entry)
+                    else:
+                        servers.append(entry)
+                    inv_path.write_text(_yaml.safe_dump(inventory))
+                    print(f"Saved to inventory. Run mcp-surgeon --inject {args.name} to push to IDEs.")
+                except Exception as e:
+                    print(f"❌ Could not write to inventory: {e}")
+                    sys.exit(1)
+            else:
+                injector.add_server(args.name, args.command, cmd_args)
         else:
             # Interactive Mode
             interactive_add(injector)
