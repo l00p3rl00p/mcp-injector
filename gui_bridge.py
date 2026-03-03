@@ -2,11 +2,13 @@ import os
 import json
 import sqlite3
 import subprocess
+import logging
 from flask import Flask, jsonify
 from flask_cors import CORS
 from pathlib import Path
 
 app = Flask(__name__)
+logger = logging.getLogger(__name__)
 # SECURITY: Restrict CORS to local dev origins only (this GUI is local-first).
 CORS(app, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://localhost:5001", "http://127.0.0.1:5001"])
 
