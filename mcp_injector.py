@@ -1412,8 +1412,56 @@ Examples:
     parser.add_argument("--forge-target", type=Path, help="Inject a specific forged server path")
     parser.add_argument("--defer", action="store_true",
         help="Save server config to inventory without injecting into IDEs. Run --inject <name> to push later.")
+    parser.add_argument("--version", action="store_true", help="Print Nexus version and exit")
+    parser.add_argument("--status", action="store_true", help="Show health of all installed Nexus subunits and exit")
     args = parser.parse_args()
     
+    # DU-V3.3.7: Unified status — no extra flag = all subunits shown.
+    _NEXUS_VERSION = "3.3.7"
+    _BIN_DIR = Path.home() / ".mcp-tools" / "bin"
+    _SUBUNITS = [
+        ("Observer",  "mcp-observer"),
+        ("Forger",    "mcp-forger"),
+        ("Librarian", "nexus-librarian"),
+        ("Activator", "mcp-activator"),
+    ]
+    if args.version:
+        print(f"Nexus v{_NEXUS_VERSION}")
+        return
+    if args.status:
+        print(f"Nexus v{_NEXUS_VERSION}")
+        print()
+        rows = []
+        for display_name, binary_name in _SUBUNITS:
+            path = _BIN_DIR / binary_name
+            installed = path.exists()
+            alive = False
+            if installed:
+                try:
+                    r = subprocess.run([str(path), "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5, shell=False)
+                    alive = r.returncode == 0
+                except Exception:
+                    alive = False
+            if alive:
+                status_str = "\u2705 installed"
+                route_info = f"(routed via: {binary_name})"
+            elif installed:
+                status_str = "\u26a0\ufe0f  installed (unresponsive)"
+                route_info = f"(binary exists: {path})"
+            else:
+                status_str = "\u274c not installed"
+                route_info = ""
+            rows.append((display_name, status_str, route_info))
+        max_name = max(len(r[0]) for r in rows)
+        max_status = max(len(r[1]) for r in rows)
+        for i, (name, s, route_info) in enumerate(rows):
+            connector = "\u2514\u2500" if i == len(rows) - 1 else "\u251c\u2500"
+            print(f"{connector} {name:<{max_name}}  {s:<{max_status}}  {route_info}".rstrip())
+        print()
+        alive_count = sum(1 for r in rows if "\u2705" in r[1])
+        print(f"  {alive_count}/{len(rows)} subunits operational")
+        return
+
     if args.forge_target:
         # Pass this to the startup prompt logic
         sys._nexus_forge_target = args.forge_target
