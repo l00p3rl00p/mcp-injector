@@ -2,7 +2,9 @@
 
 **The Precision Configuration Tool for the Workforce Nexus.**
 
-The **Surgeon** (`mcp-injector`) is responsible for the delicate task of modifying IDE configuration files to "inject" MCP servers. In v3.3.1, it is integrated into the suite workflow for seamless onboarding.
+The **Surgeon** (`mcp-injector`) is responsible for the delicate task of modifying IDE configuration files to "inject" MCP servers. It provides a safe, schema-aware way to manage IDE toolsets.
+
+---
 
 ## 🚀 Quick Start (Suite Mode)
 
@@ -18,21 +20,21 @@ bash mcp_injector_install.sh
 
 ---
 
-## 🌟 Capabilities (v3.3.1)
+## 🌟 Capabilities
 
 ### 1. Multi-Client Auto-Detection
 Natively understands the configuration formats and locations for:
 - **Claude Desktop** (`claude_desktop_config.json`)
 - **Cursor**
-- **Artifacts / AI Studio** (Experimental)
+- **AI Studio / Codex**
 
 ### 2. Guarded Injections
-- **Atomic Backups**: Every write creates a `.bak` copy of your JSON config.
-- **Syntactic Validation**: Prevents injection if the target JSON is invalid.
-- **Noclobber-Ready**: Respects the Global Security Mandate for file integrity.
+- **Atomic Backups**: Every write creates a timestamped `.bak` copy.
+- **Syntactic Validation**: Prevents injection into malformed JSON files.
+- **Noclobber-Ready**: Respects suite-wide file integrity standards.
 
 ### 3. Suite Integration
-- **Direct Attachment**: Can be called by the `Activator` to immediately register newly forged servers into your preferred IDE.
+- **Direct Attachment**: Can be called by the `Activator` to register newly forged servers.
 - **Zero-Dep**: No requirements outside the Python Standard Library.
 
 ---
@@ -47,17 +49,15 @@ Natively understands the configuration formats and locations for:
 
 ---
 
-## 🔄 Drift Lifecycle Integration (v3.3.6+)
+## 🔄 Drift Lifecycle Integration
 
 The Nexus Injector works in tandem with the Drift Lifecycle system:
-- **Detection**: Monitors injected server configurations for drift
-- **Safe Updates**: Surgical JSON edits prevent configuration corruption
-- **Multi-Target**: Supports core and forged server injections
-
-See main repo: [Drift Lifecycle System](../DRIFT_LIFECYCLE_OUTCOMES.md)
+- **Detection**: Monitors injected configurations for drift against current inventory.
+- **Safe Updates**: Surgical JSON edits ensure zero configuration corruption.
+- **Targeting**: Supports both core and forged server injections.
 
 ---
 
 ## 📝 Metadata
-* **Status**: Production Ready (v3.3.6)
+* **Status**: 🟢 Production Ready (v3.4.2)
 * **Part of**: The Workforce Nexus Suite
