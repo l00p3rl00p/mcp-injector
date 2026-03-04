@@ -1417,7 +1417,7 @@ Examples:
     args = parser.parse_args()
     
     # DU-V3.3.7: Unified status — no extra flag = all subunits shown.
-    _NEXUS_VERSION = "3.3.7"
+    _NEXUS_VERSION = "3.4.0"
     _BIN_DIR = Path.home() / ".mcp-tools" / "bin"
     _SUBUNITS = [
         ("Observer",  "mcp-observer"),
