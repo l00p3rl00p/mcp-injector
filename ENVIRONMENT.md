@@ -22,7 +22,7 @@ The suite uses predictable, user-owned paths:
 * Nexus home: `~/.mcp-tools`
 * Tools bin: `~/.mcp-tools/bin`
 * Shared venv (optional): `~/.mcp-tools/.venv`
-* Shared state + devlogs: `~/.mcpinv/`
+* Shared state + devlogs: `~/.mcp-tools/mcpinv/`
 * Global injector config (created on install if missing): `~/.mcp-tools/config.json`
 
 ---
@@ -39,7 +39,7 @@ To reduce risk and surprise:
 ## 🧾 Devlogs (Shared Diagnostics)
 
 Shared JSONL devlogs live under:
-* `~/.mcpinv/devlogs/nexus-YYYY-MM-DD.jsonl`
+* `~/.mcp-tools/mcpinv/devlogs/nexus-YYYY-MM-DD.jsonl`
 
 Behavior:
 * Entries are appended as actions run.
