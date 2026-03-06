@@ -1,3 +1,8 @@
+## [3.4.3] - 2026-03-06 (Industrial Audit)
+
+### Added
+- **Suite Version Sync**: Aligned internal version constant with the project-wide `VERSION` file.
+
 ## [3.3.6] - 2026-02-27 (Drift Lifecycle Integration)
 
 ### Added
